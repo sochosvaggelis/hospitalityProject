@@ -69,7 +69,17 @@ export default function IslandMapModal({ island, onClose }) {
     useEffect(() => {
         const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
         document.addEventListener('keydown', handleKey);
-        return () => document.removeEventListener('keydown', handleKey);
+
+        // Disable browser-level pinch-to-zoom while modal is open so pinch
+        // gestures are handled by Leaflet instead of scaling the whole page.
+        const viewport = document.querySelector('meta[name="viewport"]');
+        const originalContent = viewport?.getAttribute('content');
+        viewport?.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
+
+        return () => {
+            document.removeEventListener('keydown', handleKey);
+            if (viewport && originalContent) viewport.setAttribute('content', originalContent);
+        };
     }, [onClose]);
 
     return (
@@ -99,7 +109,7 @@ export default function IslandMapModal({ island, onClose }) {
                         center={center}
                         zoom={effectiveZoom}
                         minZoom={effectiveZoom}
-                        maxZoom={effectiveZoom}
+                        maxZoom={18}
                         maxBounds={maxBounds}
                         maxBoundsViscosity={0.85}
                         zoomSnap={0.2}
@@ -107,9 +117,9 @@ export default function IslandMapModal({ island, onClose }) {
                         style={{ width: '100%', height: '100%' }}
                         zoomControl={false}
                         dragging={true}
-                        scrollWheelZoom={false}
-                        doubleClickZoom={false}
-                        touchZoom={false}
+                        scrollWheelZoom={true}
+                        doubleClickZoom={true}
+                        touchZoom={true}
                         keyboard={false}
                         boxZoom={false}
                     >
