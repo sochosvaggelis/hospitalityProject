@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, Waves, MessageCircle, LayoutDashboard, User, Briefcase, Globe, LogIn, Shield, Plus, LogOut } from 'lucide-react';
+import { Menu, X, Waves, MessageCircle, LayoutDashboard, User, Briefcase, Globe, LogIn, Shield, Plus, LogOut, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import useLanguage from '@/lib/useLanguage';
@@ -19,12 +19,13 @@ export default function Navbar() {
     const navLinks = [
         { to: '/', label: t('nav_home'), icon: Waves },
         { to: '/jobs', label: t('nav_jobs'), icon: Briefcase },
+        { to: '/dashboard', label: t('nav_dashboard'), icon: LayoutDashboard },
+        { to: '/messages', label: t('nav_messages'), icon: MessageCircle },
+        { to: '/profile', label: t('nav_profile'), icon: User },
     ];
 
     if (isAuthenticated) {
-        navLinks.push({ to: '/dashboard', label: t('nav_dashboard'), icon: LayoutDashboard });
-        navLinks.push({ to: '/messages', label: t('nav_messages'), icon: MessageCircle });
-        navLinks.push({ to: '/profile', label: t('nav_profile'), icon: User });
+        if (role === 'hotel') navLinks.splice(3, 0, { to: '/favorites', label: lang === 'el' ? 'Αγαπημένα' : 'Favourites', icon: Star });
         if (role === 'admin') navLinks.push({ to: '/admin', label: t('nav_admin'), icon: Shield });
     }
 

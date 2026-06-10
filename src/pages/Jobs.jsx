@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import JobCard from '@/components/JobCard';
 import useLanguage from '@/lib/useLanguage';
-import { supabase } from '@/lib/supabase';
+import { api } from '@/lib/api';
 
 export default function Jobs() {
     const { t, lang } = useLanguage();
@@ -17,6 +17,11 @@ export default function Jobs() {
     const [category, setCategory] = useState('all');
     const [empType, setEmpType] = useState('all');
     const [showFilters, setShowFilters] = useState(false);
+    const [categories, setCategories] = useState([]);
+    const [empTypes, setEmpTypes] = useState([]);
+    const [islands, setIslands] = useState([]);
+    const [catMap, setCatMap] = useState({});
+    const [empMap, setEmpMap] = useState({});
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -26,12 +31,28 @@ export default function Jobs() {
     }, []);
 
     useEffect(() => {
+        const loadRefs = async () => {
+            const [cats, emps, isls] = await Promise.all([
+                api.categories(),
+                api.employmentTypes(),
+                api.islands(),
+            ]);
+            setCategories(cats?.map(c => c.key) || []);
+            setEmpTypes(emps?.map(e => e.key) || []);
+            setIslands(isls?.map(i => i.name) || []);
+            setCatMap(Object.fromEntries((cats || []).map(c => [c.key, { en: c.label_en, el: c.label_el }])));
+            setEmpMap(Object.fromEntries((emps || []).map(e => [e.key, { en: e.label_en, el: e.label_el }])));
+        };
+        loadRefs();
+    }, []);
+
+    useEffect(() => {
         const load = async () => {
             setLoading(true);
-            let query = supabase.from('jobs').select('*').eq('status', 'active').order('created_at', { ascending: false }).limit(50);
-            if (category !== 'all') query = query.eq('category', category);
-            if (empType !== 'all') query = query.eq('employment_type', empType);
-            const { data } = await query;
+            const filters = {};
+            if (category !== 'all') filters.category = category;
+            if (empType !== 'all') filters.employment_type = empType;
+            const data = await api.getJobs(filters);
             setJobs(data || []);
             setLoading(false);
         };
@@ -45,12 +66,13 @@ export default function Jobs() {
         return job.title?.toLowerCase().includes(s) || job.hotel_name?.toLowerCase().includes(s) || job.location?.toLowerCase().includes(s);
     });
 
-    const categories = ['all', 'banquet', 'breakfast', 'catering', 'fine_dining', 'head_waiter', 'pool_beach', 'room_service', 'wine_expert'];
-    const empTypes = ['all', 'full_time', 'part_time', 'seasonal', 'temporary'];
-    const ISLANDS = ['Corfu', 'Crete', 'Hydra', 'Ios', 'Kefalonia', 'Lefkada', 'Milos', 'Mykonos', 'Naxos', 'Paros', 'Rhodes', 'Samos', 'Santorini', 'Skiathos', 'Zakynthos'];
 
-    const catLabel = c => c === 'all' ? (lang === 'el' ? 'Όλες' : 'All') : t(`cat_${c}`);
-    const empLabel = e => e === 'all' ? (lang === 'el' ? 'Όλες' : 'All') : t(`emp_${e}`);
+    const allCategories = ['all', ...categories];
+    const allEmpTypes = ['all', ...empTypes];
+    const allIslands = islands;
+
+    const catLabel = c => c === 'all' ? (lang === 'el' ? 'Όλες' : 'All') : (catMap[c]?.[lang] ?? catMap[c]?.en ?? c);
+    const empLabel = e => e === 'all' ? (lang === 'el' ? 'Όλες' : 'All') : (empMap[e]?.[lang] ?? empMap[e]?.en ?? e);
     const clearFilters = () => { setCategory('all'); setEmpType('all'); setIsland('all'); setSearch(''); };
     const hasFilters = category !== 'all' || empType !== 'all' || island !== 'all' || search.trim();
 
@@ -74,8 +96,8 @@ export default function Jobs() {
                 {showFilters && (
                     <div className="bg-card rounded-2xl border border-border/50 p-4 mb-6 flex flex-col sm:flex-row gap-4">
                         {[
-                            { label: lang === 'el' ? 'Κατηγορία' : 'Category', value: category, onChange: setCategory, options: categories, labelFn: catLabel },
-                            { label: lang === 'el' ? 'Τύπος Απασχόλησης' : 'Employment Type', value: empType, onChange: setEmpType, options: empTypes, labelFn: empLabel },
+                            { label: lang === 'el' ? 'Κατηγορία' : 'Category', value: category, onChange: setCategory, options: allCategories, labelFn: catLabel },
+                            { label: lang === 'el' ? 'Τύπος Απασχόλησης' : 'Employment Type', value: empType, onChange: setEmpType, options: allEmpTypes, labelFn: empLabel },
                         ].map(({ label, value, onChange, options, labelFn }) => (
                             <div key={label} className="flex-1">
                                 <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{label}</label>
@@ -91,7 +113,7 @@ export default function Jobs() {
                                 <SelectTrigger className="rounded-xl"><SelectValue placeholder={lang === 'el' ? 'Όλα' : 'All'} /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">{lang === 'el' ? 'Όλα' : 'All'}</SelectItem>
-                                    {ISLANDS.map(isl => <SelectItem key={isl} value={isl}>{isl}</SelectItem>)}
+                                    {allIslands.map(isl => <SelectItem key={isl} value={isl}>{isl}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>

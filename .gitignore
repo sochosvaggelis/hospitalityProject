@@ -6,6 +6,13 @@
 # Claude Code internal folder
 .claude/
 
+# Local scripts (not for deployment)
+pythonScripts/
+
+# Test credentials (never push to git)
+TEST_CREDENTIALS.md
+backend/seed.js
+
 # Logs
 /logs
 *.log

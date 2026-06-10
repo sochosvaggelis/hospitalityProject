@@ -6,13 +6,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import useLanguage from '@/lib/useLanguage';
-import { supabase } from '@/lib/supabase';
+import { api } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
+import GuestView from '@/lib/GuestView';
 import moment from 'moment';
 
 export default function Admin() {
     const { lang } = useLanguage();
-    const { me } = useAuth();
+    const { me, isLoading: authLoading } = useAuth();
     const [users, setUsers] = useState([]);
     const [jobs, setJobs] = useState([]);
     const [applications, setApplications] = useState([]);
@@ -22,10 +23,10 @@ export default function Admin() {
         if (!me) return;
         if (me.role !== 'admin') { setLoading(false); return; }
         const load = async () => {
-            const [{ data: u }, { data: j }, { data: a }] = await Promise.all([
-                supabase.from('profiles').select('*').order('created_at', { ascending: false }).limit(100),
-                supabase.from('jobs').select('*').order('created_at', { ascending: false }).limit(100),
-                supabase.from('applications').select('*').order('created_at', { ascending: false }).limit(100),
+            const [u, j, a] = await Promise.all([
+                api.adminUsers(),
+                api.adminJobs(),
+                api.adminApplications(),
             ]);
             setUsers(u || []);
             setJobs(j || []);
@@ -36,21 +37,23 @@ export default function Admin() {
     }, [me]);
 
     const updateUserRole = async (userId, newRole) => {
-        const { error } = await supabase.rpc('update_user_role', { target_user_id: userId, new_role: newRole });
-        if (error) { toast.error(error.message); return; }
-        setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
-        toast.success(lang === 'el' ? 'Ο ρόλος ενημερώθηκε' : 'Role updated');
+        try {
+            await api.adminSetRole(userId, newRole);
+            setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
+            toast.success(lang === 'el' ? 'Ο ρόλος ενημερώθηκε' : 'Role updated');
+        } catch (e) { toast.error(e.message); }
     };
 
     const deleteJob = async (jobId) => {
-        await supabase.from('jobs').delete().eq('id', jobId);
+        await api.adminDeleteJob(jobId);
         setJobs(prev => prev.filter(j => j.id !== jobId));
         toast.success(lang === 'el' ? 'Η θέση διαγράφηκε' : 'Job deleted');
     };
 
-    if (loading) return <div className="flex justify-center py-32"><div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" /></div>;
+    if (authLoading || loading) return <div className="flex justify-center py-32"><div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" /></div>;
 
-    if (!me || me.role !== 'admin') {
+    if (!me) return <GuestView icon={Shield} titleEl="Admin Panel" titleEn="Admin Panel" descEl="Συνδεθείτε ως διαχειριστής για πρόσβαση." descEn="Sign in as admin to access this panel." />;
+    if (me.role !== 'admin') {
         return <div className="flex justify-center items-center py-32"><p className="text-muted-foreground">{lang === 'el' ? 'Δεν έχετε πρόσβαση.' : 'Access denied.'}</p></div>;
     }
 

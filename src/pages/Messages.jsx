@@ -3,13 +3,15 @@ import { Send, ArrowLeft, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import useLanguage from '@/lib/useLanguage';
-import { supabase } from '@/lib/supabase';
+import { api } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
+import { supabase } from '@/lib/supabase';
+import GuestView from '@/lib/GuestView';
 import moment from 'moment';
 
 export default function Messages() {
     const { t } = useLanguage();
-    const { me } = useAuth();
+    const { me, isLoading: authLoading } = useAuth();
     const [conversations, setConversations] = useState([]);
     const [activeConv, setActiveConv] = useState(null);
     const [messages, setMessages] = useState([]);
@@ -21,57 +23,97 @@ export default function Messages() {
     useEffect(() => {
         if (!me) return;
         const load = async () => {
-            const [{ data: c1 }, { data: c2 }] = await Promise.all([
-                supabase.from('conversations').select('*').eq('participant_1', me.email).order('updated_at', { ascending: false }).limit(50),
-                supabase.from('conversations').select('*').eq('participant_2', me.email).order('updated_at', { ascending: false }).limit(50),
-            ]);
-            const all = [...(c1 || []), ...(c2 || [])].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
-            const seen = new Set();
-            setConversations(all.filter(c => { if (seen.has(c.id)) return false; seen.add(c.id); return true; }));
+            const data = await api.getConversations();
+            setConversations(data || []);
             setLoading(false);
         };
         load();
     }, [me]);
 
+    // Subscribe to conversation list updates (new messages, unread changes)
+    useEffect(() => {
+        if (!me) return;
+        const channel = supabase
+            .channel('conversations-updates')
+            .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'conversations',
+            }, (payload) => {
+                const updated = payload.new;
+                setConversations(prev =>
+                    prev.map(c => c.id === updated.id ? { ...c, ...updated } : c)
+                );
+            })
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'conversations',
+            }, (payload) => {
+                const newConv = payload.new;
+                if (newConv.participant_1 === me.email || newConv.participant_2 === me.email) {
+                    setConversations(prev => [newConv, ...prev]);
+                }
+            })
+            .subscribe();
+        return () => { supabase.removeChannel(channel); };
+    }, [me?.email]);
+
     useEffect(() => {
         if (activeConv) loadMessages(activeConv.id);
-    }, [activeConv]);
+    }, [activeConv?.id]);
+
+    // Subscribe to new messages in active conversation
+    useEffect(() => {
+        if (!activeConv) return;
+        const channel = supabase
+            .channel(`messages-${activeConv.id}`)
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'messages',
+                filter: `conversation_id=eq.${activeConv.id}`,
+            }, (payload) => {
+                const incoming = payload.new;
+                // Skip own messages — already added optimistically on send
+                if (incoming.sender_email === me?.email) return;
+                setMessages(prev => {
+                    // Deduplicate by id
+                    if (prev.some(m => m.id === incoming.id)) return prev;
+                    return [...prev, incoming];
+                });
+                // Mark as read since the conversation is open
+                api.markRead(activeConv.id);
+            })
+            .subscribe();
+        return () => { supabase.removeChannel(channel); };
+    }, [activeConv?.id, me?.email]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
     const loadMessages = async (convId) => {
-        const { data } = await supabase.from('messages').select('*').eq('conversation_id', convId).order('created_at', { ascending: true }).limit(100);
+        const data = await api.getMessages(convId);
         setMessages(data || []);
         if (activeConv?.unread_by === me?.email) {
-            await supabase.from('conversations').update({ unread_by: '' }).eq('id', convId);
+            await api.markRead(convId);
         }
     };
 
     const sendMessage = async () => {
         if (!newMsg.trim() || sending) return;
         setSending(true);
-        const { data: msg } = await supabase.from('messages').insert({
-            conversation_id: activeConv.id,
-            sender_email: me.email,
-            sender_name: me.full_name,
-            content: newMsg.trim(),
-        }).select().single();
+        const msg = await api.sendMessage(activeConv.id, newMsg.trim());
         setMessages(prev => [...prev, msg]);
-        const otherEmail = activeConv.participant_1 === me.email ? activeConv.participant_2 : activeConv.participant_1;
-        await supabase.from('conversations').update({
-            last_message: newMsg.trim().substring(0, 100),
-            last_message_date: new Date().toISOString(),
-            unread_by: otherEmail,
-            updated_at: new Date().toISOString(),
-        }).eq('id', activeConv.id);
         setNewMsg('');
         setSending(false);
     };
 
     const getOtherName = conv => conv.participant_1 === me?.email ? conv.participant_2_name : conv.participant_1_name;
 
+    if (authLoading) return <div className="flex justify-center py-32"><div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" /></div>;
+    if (!me) return <GuestView icon={MessageCircle} titleEl="Τα Μηνύματά σας" titleEn="Your Messages" descEl="Συνδεθείτε για να δείτε και να στείλετε μηνύματα." descEn="Sign in to view and send messages." />;
     if (loading) return <div className="flex justify-center py-32"><div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" /></div>;
 
     return (

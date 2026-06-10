@@ -8,6 +8,17 @@
 --   2. Go to Storage → create a bucket called "uploads" (set to public)
 -- ============================================================
 
+-- ============================================================
+-- Reference tables (static/admin-managed data)
+-- See migrations/001_reference_tables.sql for full SQL + seed data
+-- ============================================================
+
+-- islands (name, outline_url, display_order)
+-- categories (key, display_order)
+-- employment_types (key, display_order)
+
+-- ============================================================
+
 -- Profiles (extends auth.users)
 create table public.profiles (
   id uuid references auth.users on delete cascade primary key,
@@ -26,6 +37,7 @@ create table public.profiles (
   hotel_description text,
   hotel_website text,
   hotel_logo_url text,
+  resume_url text,
   created_at timestamptz default now()
 );
 

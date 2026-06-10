@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: seaside-jobs-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node src/index.js
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: ALLOWED_ORIGIN
+        sync: false
+      - key: PORT
+        value: 3001

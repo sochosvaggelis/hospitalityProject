@@ -7,24 +7,53 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import useLanguage from '@/lib/useLanguage';
-import { supabase } from '@/lib/supabase';
+import { api } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
+import GuestView from '@/lib/GuestView';
 
 export default function PostJob() {
     const navigate = useNavigate();
     const { t, lang } = useLanguage();
-    const { isAuthenticated, me } = useAuth();
+    const { isAuthenticated, isLoading, me } = useAuth();
     const [submitting, setSubmitting] = useState(false);
+    const [categories, setCategories] = useState([]);
+    const [empTypes, setEmpTypes] = useState([]);
+    const [catMap, setCatMap] = useState({});
+    const [empMap, setEmpMap] = useState({});
+    const [islands, setIslands] = useState([]);
     const [form, setForm] = useState({
         title: '', location: '', description: '', requirements: '',
-        employment_type: 'full_time', salary_range: '', positions_available: 1,
-        start_date: '', category: 'fine_dining', benefits: '', status: 'active',
+        employment_type: '', salary_range: '', positions_available: 1,
+        start_date: '', category: '', benefits: '', status: 'active',
     });
 
     useEffect(() => {
-        if (!isAuthenticated) { navigate('/login'); return; }
-        if (me && me.role !== 'hotel') navigate('/dashboard');
-    }, [isAuthenticated, me, navigate]);
+        if (isLoading) return;
+        if (isAuthenticated && me && me.role !== 'hotel') navigate('/dashboard');
+    }, [isLoading, isAuthenticated, me, navigate]);
+
+    useEffect(() => {
+        const loadRefs = async () => {
+            const [cats, emps, isls] = await Promise.all([
+                api.categories(),
+                api.employmentTypes(),
+                api.islands(),
+            ]);
+            const catKeys = cats?.map(c => c.key) || [];
+            const empKeys = emps?.map(e => e.key) || [];
+            setCategories(catKeys);
+            setEmpTypes(empKeys);
+            setIslands(isls?.map(i => i.name) || []);
+            setCatMap(Object.fromEntries((cats || []).map(c => [c.key, { en: c.label_en, el: c.label_el }])));
+            setEmpMap(Object.fromEntries((emps || []).map(e => [e.key, { en: e.label_en, el: e.label_el }])));
+            setForm(f => ({
+                ...f,
+                category: f.category || catKeys[0] || '',
+                employment_type: f.employment_type || empKeys[0] || '',
+            }));
+        };
+        loadRefs();
+    }, []);
 
     const handleSubmit = async () => {
         if (!form.title || !form.location || !form.description) {
@@ -32,21 +61,21 @@ export default function PostJob() {
             return;
         }
         setSubmitting(true);
-        const { error } = await supabase.from('jobs').insert({
-            ...form,
-            hotel_name: me.hotel_name || me.full_name,
-            hotel_user_id: me.id,
-            hotel_logo: me.hotel_logo_url || me.avatar_url || '',
-        });
+        try {
+            await api.createJob(form);
+        } catch (e) {
+            toast.error(e.message);
+            setSubmitting(false);
+            return;
+        }
         setSubmitting(false);
-        if (error) { toast.error(error.message); return; }
         toast.success(lang === 'el' ? 'Η θέση δημοσιεύτηκε!' : 'Job posted successfully!');
         navigate('/dashboard');
     };
 
-    const categories = ['fine_dining', 'wine_expert', 'pool_beach', 'breakfast', 'banquet', 'room_service', 'head_waiter', 'catering'];
-    const empTypes = ['full_time', 'part_time', 'seasonal', 'temporary'];
     const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+    if (!isAuthenticated && !isLoading) return <GuestView icon={Briefcase} titleEl="Δημοσίευση Αγγελίας" titleEn="Post a Job" descEl="Συνδεθείτε ως ξενοδοχείο για να δημοσιεύσετε νέες θέσεις εργασίας." descEn="Sign in as a hotel to post new job listings." />;
 
     return (
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
@@ -64,7 +93,10 @@ export default function PostJob() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Τοποθεσία *' : 'Location *'}</label>
-                        <Input className="rounded-xl" value={form.location} onChange={e => set('location', e.target.value)} placeholder={lang === 'el' ? 'π.χ. Σαντορίνη' : 'e.g. Santorini'} />
+                        <Select value={form.location} onValueChange={v => set('location', v)}>
+                            <SelectTrigger className="rounded-xl"><SelectValue placeholder={lang === 'el' ? 'Επίλεξε νησί' : 'Select island'} /></SelectTrigger>
+                            <SelectContent>{islands.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}</SelectContent>
+                        </Select>
                     </div>
                     <div>
                         <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Μισθός' : 'Salary Range'}</label>
@@ -77,14 +109,14 @@ export default function PostJob() {
                         <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Κατηγορία' : 'Category'}</label>
                         <Select value={form.category} onValueChange={v => set('category', v)}>
                             <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
-                            <SelectContent>{categories.map(c => <SelectItem key={c} value={c}>{t(`cat_${c}`)}</SelectItem>)}</SelectContent>
+                            <SelectContent>{categories.map(c => <SelectItem key={c} value={c}>{catMap[c]?.[lang] ?? catMap[c]?.en ?? c}</SelectItem>)}</SelectContent>
                         </Select>
                     </div>
                     <div>
                         <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Τύπος' : 'Type'}</label>
                         <Select value={form.employment_type} onValueChange={v => set('employment_type', v)}>
                             <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
-                            <SelectContent>{empTypes.map(e => <SelectItem key={e} value={e}>{t(`emp_${e}`)}</SelectItem>)}</SelectContent>
+                            <SelectContent>{empTypes.map(e => <SelectItem key={e} value={e}>{empMap[e]?.[lang] ?? empMap[e]?.en ?? e}</SelectItem>)}</SelectContent>
                         </Select>
                     </div>
                     <div>

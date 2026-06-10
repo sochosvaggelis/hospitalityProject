@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UtensilsCrossed, Building2, ArrowRight, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/lib/supabase';
+import { api } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
 
 export default function RoleSelector({ onComplete }) {
@@ -12,10 +12,7 @@ export default function RoleSelector({ onComplete }) {
 
     const handleConfirm = async () => {
         setSaving(true);
-        await supabase.from('profiles').update({
-            role: selected === 'hotel' ? 'hotel' : 'user',
-            role_chosen: true,
-        }).eq('id', user.id);
+        await api.setRole(selected === 'hotel' ? 'hotel' : 'user');
         await onComplete();
     };
 

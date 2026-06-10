@@ -1,49 +1,63 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Waves } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Waves, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import useLanguage from '@/lib/useLanguage';
 
 export default function Login() {
     const navigate = useNavigate();
+    const location = useLocation();
+    const from = location.state?.from || '/';
     const { lang } = useLanguage();
     const [mode, setMode] = useState('login'); // 'login' | 'register'
     const [loading, setLoading] = useState(false);
     const [form, setForm] = useState({ email: '', password: '', fullName: '' });
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
 
-    const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+    const set = (k, v) => { setError(''); setForm(f => ({ ...f, [k]: v })); };
+    const switchMode = (m) => { setMode(m); setError(''); setSuccess(''); };
 
     const handleLogin = async () => {
         if (!form.email || !form.password) {
-            toast.error(lang === 'el' ? 'Συμπληρώστε email και κωδικό' : 'Enter email and password');
+            setError(lang === 'el' ? 'Συμπληρώστε email και κωδικό.' : 'Please enter your email and password.');
             return;
         }
         setLoading(true);
+        setError('');
         const { error } = await supabase.auth.signInWithPassword({
             email: form.email,
             password: form.password,
         });
         setLoading(false);
         if (error) {
-            toast.error(lang === 'el' ? 'Λάθος email ή κωδικός' : 'Invalid email or password');
+            setError(lang === 'el' ? 'Λάθος email ή κωδικός. Δοκιμάστε ξανά.' : 'Invalid email or password. Please try again.');
         } else {
-            navigate('/');
+            navigate(from, { replace: true });
         }
     };
 
     const handleRegister = async () => {
-        if (!form.email || !form.password || !form.fullName) {
-            toast.error(lang === 'el' ? 'Συμπληρώστε όλα τα πεδία' : 'Fill in all fields');
+        if (!form.fullName.trim()) {
+            setError(lang === 'el' ? 'Εισάγετε το ονοματεπώνυμό σας.' : 'Please enter your full name.');
+            return;
+        }
+        if (!form.email.trim()) {
+            setError(lang === 'el' ? 'Εισάγετε το email σας.' : 'Please enter your email address.');
+            return;
+        }
+        if (!form.password) {
+            setError(lang === 'el' ? 'Εισάγετε έναν κωδικό πρόσβασης.' : 'Please enter a password.');
             return;
         }
         if (form.password.length < 6) {
-            toast.error(lang === 'el' ? 'Ο κωδικός πρέπει να έχει τουλάχιστον 6 χαρακτήρες' : 'Password must be at least 6 characters');
+            setError(lang === 'el' ? 'Ο κωδικός πρέπει να έχει τουλάχιστον 6 χαρακτήρες.' : 'Password must be at least 6 characters.');
             return;
         }
         setLoading(true);
+        setError('');
         const { error } = await supabase.auth.signUp({
             email: form.email,
             password: form.password,
@@ -51,10 +65,10 @@ export default function Login() {
         });
         setLoading(false);
         if (error) {
-            toast.error(error.message);
+            setError(error.message);
         } else {
-            toast.success(lang === 'el' ? 'Ο λογαριασμός δημιουργήθηκε!' : 'Account created!');
-            navigate('/');
+            setSuccess(lang === 'el' ? 'Ο λογαριασμός δημιουργήθηκε! Καλωσήρθατε.' : 'Account created! Welcome aboard.');
+            navigate(from, { replace: true });
         }
     };
 
@@ -72,18 +86,32 @@ export default function Login() {
                     {/* Toggle */}
                     <div className="flex rounded-xl bg-muted p-1 mb-6">
                         <button
-                            onClick={() => setMode('login')}
+                            onClick={() => switchMode('login')}
                             className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${mode === 'login' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground'}`}
                         >
                             {lang === 'el' ? 'Σύνδεση' : 'Sign In'}
                         </button>
                         <button
-                            onClick={() => setMode('register')}
+                            onClick={() => switchMode('register')}
                             className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${mode === 'register' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground'}`}
                         >
                             {lang === 'el' ? 'Εγγραφή' : 'Register'}
                         </button>
                     </div>
+
+                    {error && (
+                        <div className="flex items-start gap-2.5 rounded-xl bg-red-50 border border-red-200 text-red-700 px-4 py-3 mb-4 text-sm">
+                            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                            <span>{error}</span>
+                        </div>
+                    )}
+
+                    {success && (
+                        <div className="flex items-start gap-2.5 rounded-xl bg-green-50 border border-green-200 text-green-700 px-4 py-3 mb-4 text-sm">
+                            <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                            <span>{success}</span>
+                        </div>
+                    )}
 
                     <div className="space-y-4">
                         {mode === 'register' && (

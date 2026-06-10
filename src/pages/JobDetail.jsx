@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MapPin, Clock, Users, Briefcase, Calendar, DollarSign, CheckCircle, Award } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Users, Briefcase, Calendar, DollarSign, CheckCircle, Award, FileText, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import useLanguage from '@/lib/useLanguage';
-import { supabase } from '@/lib/supabase';
+import { api } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
 import moment from 'moment';
 
@@ -22,15 +22,20 @@ export default function JobDetail() {
     const [coverLetter, setCoverLetter] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [alreadyApplied, setAlreadyApplied] = useState(false);
+    const [attachResume, setAttachResume] = useState(true);
+    const [empMap, setEmpMap] = useState({});
 
     useEffect(() => {
         const load = async () => {
-            const { data: jobData } = await supabase.from('jobs').select('*').eq('id', jobId).single();
+            const [jobData, emps] = await Promise.all([
+                api.getJob(jobId),
+                api.employmentTypes(),
+            ]);
             setJob(jobData);
+            setEmpMap(Object.fromEntries((emps || []).map(e => [e.key, { en: e.label_en, el: e.label_el }])));
             if (isAuthenticated && me) {
-                const { data: apps } = await supabase.from('applications')
-                    .select('id').eq('job_id', jobId).eq('applicant_email', me.email);
-                if (apps?.length > 0) setAlreadyApplied(true);
+                const { applied } = await api.checkApplied(jobId);
+                setAlreadyApplied(applied);
             }
             setLoading(false);
         };
@@ -44,15 +49,10 @@ export default function JobDetail() {
 
     const submitApplication = async () => {
         setSubmitting(true);
-        await supabase.from('applications').insert({
+        await api.apply({
             job_id: jobId,
-            job_title: job.title,
-            hotel_name: job.hotel_name,
-            hotel_user_id: job.hotel_user_id,
-            applicant_name: me.full_name,
-            applicant_email: me.email,
             cover_letter: coverLetter,
-            status: 'pending',
+            resume_url: attachResume && me?.resume_url ? me.resume_url : null,
         });
         setSubmitting(false);
         setApplyOpen(false);
@@ -63,7 +63,7 @@ export default function JobDetail() {
     if (loading) return <div className="flex justify-center py-32"><div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" /></div>;
     if (!job) return <div className="max-w-3xl mx-auto px-4 py-20 text-center"><p className="text-muted-foreground">Job not found</p><Link to="/jobs"><Button variant="outline" className="mt-4">{t('common_back')}</Button></Link></div>;
 
-    const typeLabels = { full_time: t('emp_full_time'), part_time: t('emp_part_time'), seasonal: t('emp_seasonal'), temporary: t('emp_temporary') };
+    const empLabel = key => empMap[key]?.[lang] ?? empMap[key]?.en ?? key;
 
     return (
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
@@ -82,13 +82,15 @@ export default function JobDetail() {
                     )}
                     <div className="flex-1">
                         <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground">{job.title}</h1>
-                        <p className="text-lg text-muted-foreground mt-1">{job.hotel_name}</p>
+                        <Link to={`/hotels/${job.hotel_user_id}`} className="text-lg text-muted-foreground hover:text-primary transition-colors mt-1 inline-block">
+                            {job.hotel_name}
+                        </Link>
                     </div>
                 </div>
 
                 <div className="flex flex-wrap gap-2 mb-8">
                     <Badge variant="secondary" className="gap-1 rounded-lg py-1.5 px-3"><MapPin className="w-3.5 h-3.5" />{job.location}</Badge>
-                    <Badge variant="outline" className="gap-1 rounded-lg py-1.5 px-3"><Clock className="w-3.5 h-3.5" />{typeLabels[job.employment_type] || job.employment_type}</Badge>
+                    <Badge variant="outline" className="gap-1 rounded-lg py-1.5 px-3"><Clock className="w-3.5 h-3.5" />{empLabel(job.employment_type)}</Badge>
                     {job.positions_available && <Badge variant="outline" className="gap-1 rounded-lg py-1.5 px-3"><Users className="w-3.5 h-3.5" />{job.positions_available} {t('jobs_positions')}</Badge>}
                     {job.salary_range && <Badge variant="secondary" className="gap-1 rounded-lg py-1.5 px-3 bg-primary/10 text-primary border-0"><DollarSign className="w-3.5 h-3.5" />{job.salary_range}</Badge>}
                     {job.start_date && <Badge variant="outline" className="gap-1 rounded-lg py-1.5 px-3"><Calendar className="w-3.5 h-3.5" />{job.start_date}</Badge>}
@@ -124,6 +126,41 @@ export default function JobDetail() {
                             <Textarea className="rounded-xl min-h-[120px]" value={coverLetter} onChange={e => setCoverLetter(e.target.value)}
                                 placeholder={lang === 'el' ? 'Γράψτε μια σύντομη συνοδευτική επιστολή...' : 'Write a brief cover letter...'} />
                         </div>
+
+                        {/* Resume attach */}
+                        <div className="rounded-xl border border-border/50 p-3 bg-muted/30">
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2">
+                                    <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                                    <div>
+                                        <p className="text-sm font-medium text-foreground">
+                                            {lang === 'el' ? 'Βιογραφικό (CV)' : 'Resume / CV'}
+                                        </p>
+                                        {me?.resume_url ? (
+                                            <a href={me.resume_url} target="_blank" rel="noopener noreferrer"
+                                                className="text-xs text-primary hover:underline flex items-center gap-1">
+                                                {lang === 'el' ? 'Προβολή CV' : 'View CV'}
+                                                <ExternalLink className="w-3 h-3" />
+                                            </a>
+                                        ) : (
+                                            <p className="text-xs text-muted-foreground">
+                                                {lang === 'el' ? 'Δεν έχετε ανεβάσει CV — ' : 'No CV uploaded — '}
+                                                <Link to="/profile" className="text-primary hover:underline" onClick={() => setApplyOpen(false)}>
+                                                    {lang === 'el' ? 'Ανεβάστε στο προφίλ σας' : 'Upload in your profile'}
+                                                </Link>
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                                {me?.resume_url && (
+                                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                                        <input type="checkbox" checked={attachResume} onChange={e => setAttachResume(e.target.checked)} className="rounded" />
+                                        <span className="text-sm text-foreground">{lang === 'el' ? 'Επισύναψη' : 'Attach'}</span>
+                                    </label>
+                                )}
+                            </div>
+                        </div>
+
                         <div className="flex gap-3 justify-end">
                             <Button variant="outline" onClick={() => setApplyOpen(false)} className="rounded-xl">{t('common_cancel')}</Button>
                             <Button onClick={submitApplication} disabled={submitting} className="rounded-xl">{submitting ? t('common_loading') : t('apply_submit')}</Button>

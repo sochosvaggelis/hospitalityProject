@@ -1,3 +1,4 @@
+import 'leaflet/dist/leaflet.css';
 import { Toaster } from "@/components/ui/toaster";
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClientInstance } from '@/lib/query-client';
@@ -13,6 +14,10 @@ import Profile from './pages/Profile';
 import Messages from './pages/Messages';
 import PostJob from './pages/PostJob';
 import Admin from './pages/Admin';
+import Favorites from './pages/Favorites';
+import HotelProfile from './pages/HotelProfile';
+import ScrollToTop from './lib/ScrollToTop';
+import ProtectedRoute from './lib/ProtectedRoute';
 import Login from './pages/Login';
 import RoleSelector from './components/RoleSelector';
 
@@ -32,6 +37,8 @@ const AppContent = () => {
     }
 
     return (
+        <>
+        <ScrollToTop />
         <Routes>
             <Route element={<Layout />}>
                 <Route path="/" element={<Home />} />
@@ -40,12 +47,15 @@ const AppContent = () => {
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/messages" element={<Messages />} />
+                <Route path="/favorites" element={<Favorites />} />
                 <Route path="/post-job" element={<PostJob />} />
                 <Route path="/admin" element={<Admin />} />
+                <Route path="/hotels/:hotelId" element={<HotelProfile />} />
                 <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} />
                 <Route path="*" element={<PageNotFound />} />
             </Route>
         </Routes>
+        </>
     );
 };
 
