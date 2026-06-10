@@ -76,12 +76,13 @@ export default function IslandMapModal({ island, onClose }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-4">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
             <div
-                className="relative z-10 w-full max-w-6xl mx-0 sm:mx-4 rounded-none sm:rounded-2xl overflow-hidden shadow-2xl"
+                className="relative z-10 w-full max-w-6xl mx-0 sm:mx-4 rounded-none sm:rounded-2xl overflow-hidden shadow-2xl flex flex-col"
                 style={{ height: '100dvh', maxHeight: '100dvh' }}
                 onMouseDown={e => e.stopPropagation()}
                 onClick={e => e.stopPropagation()}
             >
-                <div className="absolute top-0 left-0 right-0 z-[1000] flex items-center justify-between px-4 sm:px-5 py-2.5 sm:py-3 backdrop-blur-sm"
+                {/* Header always in flow — never overlapped by the map */}
+                <div className="flex-shrink-0 flex items-center justify-between px-4 sm:px-5 py-2.5 sm:py-3"
                     style={{ background: 'rgba(238, 229, 210, 0.95)', borderBottom: '1px solid rgba(194,160,100,0.3)' }}>
                     <div className="flex items-center gap-2 sm:gap-3">
                         {island.outline_url && (
@@ -92,31 +93,34 @@ export default function IslandMapModal({ island, onClose }) {
                     </div>
                     <button onClick={onClose} style={{ color: '#8a6a3a' }} className="hover:opacity-70 transition-opacity text-lg sm:text-xl leading-none p-1">✕</button>
                 </div>
-                <MapContainer
-                    center={center}
-                    zoom={effectiveZoom}
-                    minZoom={effectiveZoom}
-                    maxZoom={effectiveZoom}
-                    maxBounds={maxBounds}
-                    maxBoundsViscosity={0.85}
-                    zoomSnap={0.2}
-                    zoomDelta={0.2}
-                    style={{ width: '100%', height: '100%' }}
-                    zoomControl={false}
-                    dragging={true}
-                    scrollWheelZoom={false}
-                    doubleClickZoom={false}
-                    touchZoom={false}
-                    keyboard={false}
-                    boxZoom={false}
-                >
-                    <MapView center={center} zoom={effectiveZoom} />
-                    <TileLayer
-                        attribution='© <a href="https://carto.com/">CARTO</a>'
-                        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png"
-                    />
-                    <Marker position={[center[0] + 0.04, center[1]]} icon={labelIcon} interactive={false} />
-                </MapContainer>
+                {/* Map fills whatever space remains below the header */}
+                <div className="flex-1 min-h-0">
+                    <MapContainer
+                        center={center}
+                        zoom={effectiveZoom}
+                        minZoom={effectiveZoom}
+                        maxZoom={effectiveZoom}
+                        maxBounds={maxBounds}
+                        maxBoundsViscosity={0.85}
+                        zoomSnap={0.2}
+                        zoomDelta={0.2}
+                        style={{ width: '100%', height: '100%' }}
+                        zoomControl={false}
+                        dragging={true}
+                        scrollWheelZoom={false}
+                        doubleClickZoom={false}
+                        touchZoom={false}
+                        keyboard={false}
+                        boxZoom={false}
+                    >
+                        <MapView center={center} zoom={effectiveZoom} />
+                        <TileLayer
+                            attribution='© <a href="https://carto.com/">CARTO</a>'
+                            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png"
+                        />
+                        <Marker position={[center[0] + 0.04, center[1]]} icon={labelIcon} interactive={false} />
+                    </MapContainer>
+                </div>
             </div>
         </div>
     );
