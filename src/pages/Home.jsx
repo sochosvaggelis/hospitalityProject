@@ -53,7 +53,7 @@ export default function Home() {
         allJobs.filter(j => j.location?.toLowerCase().includes(islandName.toLowerCase())).length;
 
     const handleSearch = () => {
-        if (search.trim()) window.location.href = `/AegeanConnect/jobs?search=${encodeURIComponent(search)}`;
+        if (search.trim()) window.location.href = `${import.meta.env.BASE_URL}jobs?search=${encodeURIComponent(search)}`;
     };
 
     return (

@@ -3,7 +3,7 @@ import { defineConfig } from 'vite'
 import path from 'path'
 
 export default defineConfig({
-    base: '/AegeanConnect/',
+    base: '/hospitalityProject/',
     plugins: [react()],
     resolve: {
         alias: {
