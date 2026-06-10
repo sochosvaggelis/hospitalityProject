@@ -43,11 +43,26 @@ export default function IslandMapModal({ island, onClose }) {
     const coords = ISLAND_COORDS[island.name] ?? { center: [37.9838, 23.7275], zoom: 7 };
     const { center, zoom } = coords;
 
+    // Zoom was calibrated for ~1100px (desktop modal width).
+    // Narrow viewports need to zoom out proportionally so the island stays visible.
+    const mapWidth = Math.min(window.innerWidth, 1100);
+    const zoomOffset = Math.log2(1100 / mapWidth);
+    const effectiveZoom = Math.round((zoom - zoomOffset) / 0.2) * 0.2;
+
+    // Pan bounds: user can drag to explore, but can't scroll more than ~1.5× the
+    // visible area away from the island center (the "threshold" effect).
+    const pad = Math.min(0.12 * Math.pow(2, 13 - effectiveZoom), 2.5);
+    const maxBounds = [
+        [center[0] - pad,       center[1] - pad * 1.6],
+        [center[0] + pad,       center[1] + pad * 1.6],
+    ];
+
+    const labelFontSize = window.innerWidth < 640 ? '13px' : '18px';
     const displayName = tIsland(island.name, lang);
 
     const labelIcon = L.divIcon({
         className: '',
-        html: `<div style="font-family:'Cinzel',serif;font-size:18px;font-weight:700;color:#5a3e1b;text-shadow:1px 1px 0 rgba(238,229,210,0.9),-1px -1px 0 rgba(238,229,210,0.9),1px -1px 0 rgba(238,229,210,0.9),-1px 1px 0 rgba(238,229,210,0.9);white-space:nowrap;pointer-events:none;">${displayName}</div>`,
+        html: `<div style="font-family:'Cinzel',serif;font-size:${labelFontSize};font-weight:700;color:#5a3e1b;text-shadow:1px 1px 0 rgba(238,229,210,0.9),-1px -1px 0 rgba(238,229,210,0.9),1px -1px 0 rgba(238,229,210,0.9),-1px 1px 0 rgba(238,229,210,0.9);white-space:nowrap;pointer-events:none;">${displayName}</div>`,
         iconAnchor: [0, 0],
     });
 
@@ -66,33 +81,36 @@ export default function IslandMapModal({ island, onClose }) {
                 onMouseDown={e => e.stopPropagation()}
                 onClick={e => e.stopPropagation()}
             >
-                <div className="absolute top-0 left-0 right-0 z-[1000] flex items-center justify-between px-5 py-3 backdrop-blur-sm"
+                <div className="absolute top-0 left-0 right-0 z-[1000] flex items-center justify-between px-4 sm:px-5 py-2.5 sm:py-3 backdrop-blur-sm"
                     style={{ background: 'rgba(238, 229, 210, 0.95)', borderBottom: '1px solid rgba(194,160,100,0.3)' }}>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3">
                         {island.outline_url && (
-                            <img src={island.outline_url} alt={island.name} className="h-7 w-auto object-contain opacity-70"
+                            <img src={island.outline_url} alt={island.name} className="h-5 sm:h-7 w-auto object-contain opacity-70"
                                 style={{ filter: 'invert(27%) sepia(97%) saturate(500%) hue-rotate(190deg) brightness(85%)' }} />
                         )}
-                        <span style={{ fontFamily: "'Cinzel', serif", color: '#5a3e1b' }} className="font-bold text-lg">{displayName}</span>
+                        <span style={{ fontFamily: "'Cinzel', serif", color: '#5a3e1b' }} className="font-bold text-base sm:text-lg">{displayName}</span>
                     </div>
-                    <button onClick={onClose} style={{ color: '#8a6a3a' }} className="hover:opacity-70 transition-opacity text-xl leading-none">✕</button>
+                    <button onClick={onClose} style={{ color: '#8a6a3a' }} className="hover:opacity-70 transition-opacity text-lg sm:text-xl leading-none p-1">✕</button>
                 </div>
                 <MapContainer
                     center={center}
-                    zoom={zoom}
-                    minZoom={zoom}
+                    zoom={effectiveZoom}
+                    minZoom={effectiveZoom}
+                    maxZoom={effectiveZoom}
+                    maxBounds={maxBounds}
+                    maxBoundsViscosity={0.85}
                     zoomSnap={0.2}
                     zoomDelta={0.2}
                     style={{ width: '100%', height: '100%' }}
                     zoomControl={false}
-                    dragging={false}
+                    dragging={true}
                     scrollWheelZoom={false}
                     doubleClickZoom={false}
                     touchZoom={false}
                     keyboard={false}
                     boxZoom={false}
                 >
-                    <MapView center={center} zoom={zoom} />
+                    <MapView center={center} zoom={effectiveZoom} />
                     <TileLayer
                         attribution='© <a href="https://carto.com/">CARTO</a>'
                         url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png"
