@@ -8,6 +8,7 @@
 
 # Local scripts (not for deployment)
 pythonScripts/
+scripts/
 
 # Test credentials (never push to git)
 TEST_CREDENTIALS.md
