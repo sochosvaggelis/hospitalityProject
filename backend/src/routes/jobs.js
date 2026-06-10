@@ -7,11 +7,15 @@ const router = Router();
 
 // Public: list active jobs with optional filters
 router.get('/', async (req, res) => {
-  const { category, employment_type, location } = req.query;
+  const { category, employment_type, location, listing_lang } = req.query;
   let query = supabase.from('jobs').select('*').eq('status', 'active').order('created_at', { ascending: false }).limit(50);
   if (category && category !== 'all') query = query.eq('category', category);
   if (employment_type && employment_type !== 'all') query = query.eq('employment_type', employment_type);
   if (location && location !== 'all') query = query.ilike('location', `%${location}%`);
+  if (listing_lang && listing_lang !== 'all') {
+    if (listing_lang === 'both') query = query.eq('listing_lang', 'both');
+    else query = query.in('listing_lang', [listing_lang, 'both']);
+  }
   const { data, error } = await query;
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
@@ -33,10 +37,12 @@ router.get('/:id', async (req, res) => {
 
 // Hotel only: create job
 router.post('/', authenticate, requireRole('hotel'), async (req, res) => {
-  const { title, location, description, requirements, employment_type, salary_range, positions_available, start_date, category, benefits } = req.body;
+  const { title, title_el, listing_lang, location, description, requirements, employment_type, salary_amount, salary_period, positions_available, start_date, category, benefits } = req.body;
   const { data, error } = await supabase.from('jobs').insert({
-    title, location, description, requirements, employment_type,
-    salary_range, positions_available, start_date, category, benefits,
+    title, title_el: title_el || null, listing_lang: listing_lang || 'en', location, description, requirements, employment_type,
+    salary_amount: salary_amount || null,
+    salary_period: salary_period || null,
+    positions_available, start_date, category, benefits,
     status: 'active',
     hotel_name: req.user.hotel_name || req.user.full_name,
     hotel_user_id: req.user.id,
@@ -53,10 +59,12 @@ router.put('/:id', authenticate, async (req, res) => {
   if (job.hotel_user_id !== req.user.id && req.user.role !== 'admin') {
     return res.status(403).json({ error: 'Forbidden' });
   }
-  const { title, location, description, requirements, employment_type, salary_range, positions_available, start_date, category, benefits, status } = req.body;
+  const { title, title_el, listing_lang, location, description, requirements, employment_type, salary_amount, salary_period, positions_available, start_date, category, benefits, status } = req.body;
   const { data, error } = await supabase.from('jobs').update({
-    title, location, description, requirements, employment_type,
-    salary_range, positions_available, start_date, category, benefits, status,
+    title, title_el: title_el || null, listing_lang: listing_lang || 'en', location, description, requirements, employment_type,
+    salary_amount: salary_amount || null,
+    salary_period: salary_period || null,
+    positions_available, start_date, category, benefits, status,
   }).eq('id', req.params.id).select().single();
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);

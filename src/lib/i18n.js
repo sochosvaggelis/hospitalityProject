@@ -115,6 +115,28 @@ const translations = {
         footer_contact: "Contact",
         footer_rights: "All rights reserved.",
 
+        // Salary periods
+        salary_hourly: "/hour",
+        salary_daily: "/day",
+        salary_monthly: "/month",
+
+        // Islands
+        island_santorini: "Santorini",
+        island_mykonos: "Mykonos",
+        island_crete: "Crete",
+        island_rhodes: "Rhodes",
+        island_corfu: "Corfu",
+        island_zakynthos: "Zakynthos",
+        island_paros: "Paros",
+        island_naxos: "Naxos",
+        island_lefkada: "Lefkada",
+        island_milos: "Milos",
+        island_skiathos: "Skiathos",
+        island_hydra: "Hydra",
+        island_ios: "Ios",
+        island_kefalonia: "Kefalonia",
+        island_samos: "Samos",
+
         // Language
         lang_en: "English",
         lang_el: "Ελληνικά",
@@ -235,6 +257,28 @@ const translations = {
         footer_contact: "Επικοινωνία",
         footer_rights: "Με επιφύλαξη παντός δικαιώματος.",
 
+        // Salary periods
+        salary_hourly: "/ώρα",
+        salary_daily: "/ημέρα",
+        salary_monthly: "/μήνα",
+
+        // Islands
+        island_santorini: "Σαντορίνη",
+        island_mykonos: "Μύκονος",
+        island_crete: "Κρήτη",
+        island_rhodes: "Ρόδος",
+        island_corfu: "Κέρκυρα",
+        island_zakynthos: "Ζάκυνθος",
+        island_paros: "Πάρος",
+        island_naxos: "Νάξος",
+        island_lefkada: "Λευκάδα",
+        island_milos: "Μήλος",
+        island_skiathos: "Σκιάθος",
+        island_hydra: "Ύδρα",
+        island_ios: "Ίος",
+        island_kefalonia: "Κεφαλονιά",
+        island_samos: "Σάμος",
+
         // Language
         lang_en: "English",
         lang_el: "Ελληνικά",
@@ -255,6 +299,19 @@ export function setLanguage(lang) {
 
 export function getLanguage() {
     return currentLang;
+}
+
+// e.g. formatSalary(50, 'daily', 'el') → '€50/ημέρα'
+export function formatSalary(amount, period, lang) {
+    if (!amount || !period) return null;
+    const periodLabel = translations[lang]?.[`salary_${period}`] || translations.en[`salary_${period}`] || '';
+    return `€${Number(amount).toLocaleString('el-GR')}${periodLabel}`;
+}
+
+// e.g. tIsland('Santorini', 'el') → 'Σαντορίνη'
+export function tIsland(name, lang) {
+    const key = `island_${name.toLowerCase()}`;
+    return translations[lang]?.[key] || translations.en[key] || name;
 }
 
 export function useLanguage() {

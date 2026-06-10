@@ -16,6 +16,7 @@ export default function Jobs() {
     const [island, setIsland] = useState('all');
     const [category, setCategory] = useState('all');
     const [empType, setEmpType] = useState('all');
+    const [listingLang, setListingLang] = useState('all');
     const [showFilters, setShowFilters] = useState(false);
     const [categories, setCategories] = useState([]);
     const [empTypes, setEmpTypes] = useState([]);
@@ -52,12 +53,13 @@ export default function Jobs() {
             const filters = {};
             if (category !== 'all') filters.category = category;
             if (empType !== 'all') filters.employment_type = empType;
+            if (listingLang !== 'all') filters.listing_lang = listingLang;
             const data = await api.getJobs(filters);
             setJobs(data || []);
             setLoading(false);
         };
         load();
-    }, [category, empType]);
+    }, [category, empType, listingLang]);
 
     const filteredJobs = jobs.filter(job => {
         if (island !== 'all' && !job.location?.toLowerCase().includes(island.toLowerCase())) return false;
@@ -73,8 +75,9 @@ export default function Jobs() {
 
     const catLabel = c => c === 'all' ? (lang === 'el' ? 'Όλες' : 'All') : (catMap[c]?.[lang] ?? catMap[c]?.en ?? c);
     const empLabel = e => e === 'all' ? (lang === 'el' ? 'Όλες' : 'All') : (empMap[e]?.[lang] ?? empMap[e]?.en ?? e);
-    const clearFilters = () => { setCategory('all'); setEmpType('all'); setIsland('all'); setSearch(''); };
-    const hasFilters = category !== 'all' || empType !== 'all' || island !== 'all' || search.trim();
+    const langLabel = l => ({ all: lang === 'el' ? 'Όλες' : 'All', en: 'English', el: 'Ελληνικά', both: lang === 'el' ? 'Και τα 2' : 'Both' }[l] ?? l);
+    const clearFilters = () => { setCategory('all'); setEmpType('all'); setIsland('all'); setListingLang('all'); setSearch(''); };
+    const hasFilters = category !== 'all' || empType !== 'all' || island !== 'all' || listingLang !== 'all' || search.trim();
 
     return (
         <div style={{ background: '#eef4fd', minHeight: '100vh' }}>
@@ -117,6 +120,18 @@ export default function Jobs() {
                                 </SelectContent>
                             </Select>
                         </div>
+                        <div className="flex-1">
+                            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{lang === 'el' ? 'Γλώσσα Αγγελίας' : 'Listing Language'}</label>
+                            <Select value={listingLang} onValueChange={setListingLang}>
+                                <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">{lang === 'el' ? 'Όλες' : 'All'}</SelectItem>
+                                    <SelectItem value="en">English</SelectItem>
+                                    <SelectItem value="el">Ελληνικά</SelectItem>
+                                    <SelectItem value="both">{lang === 'el' ? 'Και τα 2' : 'Both'}</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
                 )}
 
@@ -125,6 +140,7 @@ export default function Jobs() {
                         {category !== 'all' && <Badge variant="secondary" className="gap-1 rounded-lg">{catLabel(category)}<X className="w-3 h-3 cursor-pointer" onClick={() => setCategory('all')} /></Badge>}
                         {empType !== 'all' && <Badge variant="secondary" className="gap-1 rounded-lg">{empLabel(empType)}<X className="w-3 h-3 cursor-pointer" onClick={() => setEmpType('all')} /></Badge>}
                         {island !== 'all' && <Badge variant="secondary" className="gap-1 rounded-lg">{island}<X className="w-3 h-3 cursor-pointer" onClick={() => setIsland('all')} /></Badge>}
+                        {listingLang !== 'all' && <Badge variant="secondary" className="gap-1 rounded-lg">{langLabel(listingLang)}<X className="w-3 h-3 cursor-pointer" onClick={() => setListingLang('all')} /></Badge>}
                         <button onClick={clearFilters} className="text-xs text-primary hover:underline">{lang === 'el' ? 'Καθαρισμός' : 'Clear all'}</button>
                     </div>
                 )}

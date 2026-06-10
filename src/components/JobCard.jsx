@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { MapPin, Clock, Users, Briefcase } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import useLanguage from '@/lib/useLanguage';
+import { formatSalary } from '@/lib/i18n';
 import moment from 'moment';
 
 const typeLabels = {
@@ -30,7 +31,7 @@ export default function JobCard({ job }) {
                     )}
                     <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors truncate">
-                            {job.title}
+                            {lang === 'el' && job.title_el ? job.title_el : job.title}
                         </h3>
                         <p className="text-sm text-muted-foreground mt-0.5">{job.hotel_name}</p>
                     </div>
@@ -50,8 +51,8 @@ export default function JobCard({ job }) {
                     </Badge>
                 </div>
 
-                {job.salary_range && (
-                    <p className="mt-3 text-sm font-medium text-primary">{job.salary_range}</p>
+                {job.salary_amount && (
+                    <p className="mt-3 text-sm font-medium text-primary">{formatSalary(job.salary_amount, job.salary_period, lang)}</p>
                 )}
 
                 <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">

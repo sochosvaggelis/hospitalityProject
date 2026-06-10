@@ -22,8 +22,8 @@ export default function PostJob() {
     const [empMap, setEmpMap] = useState({});
     const [islands, setIslands] = useState([]);
     const [form, setForm] = useState({
-        title: '', location: '', description: '', requirements: '',
-        employment_type: '', salary_range: '', positions_available: 1,
+        title: '', title_el: '', listing_lang: 'en', location: '', description: '', requirements: '',
+        employment_type: '', salary_amount: '', salary_period: 'monthly', positions_available: 1,
         start_date: '', category: '', benefits: '', status: 'active',
     });
 
@@ -86,8 +86,30 @@ export default function PostJob() {
 
             <div className="bg-card rounded-2xl border border-border/50 p-6 space-y-5">
                 <div>
-                    <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Τίτλος Θέσης *' : 'Job Title *'}</label>
-                    <Input className="rounded-xl" value={form.title} onChange={e => set('title', e.target.value)} placeholder={lang === 'el' ? 'π.χ. Σερβιτόρος/α' : 'e.g. Waiter/Waitress'} />
+                    <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Γλώσσα Αγγελίας *' : 'Listing Language *'}</label>
+                    <Select value={form.listing_lang} onValueChange={v => set('listing_lang', v)}>
+                        <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="en">English only</SelectItem>
+                            <SelectItem value="el">Ελληνικά only</SelectItem>
+                            <SelectItem value="both">English + Ελληνικά</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {(form.listing_lang === 'en' || form.listing_lang === 'both') && (
+                        <div>
+                            <label className="text-sm font-medium text-foreground mb-1.5 block">Job Title (EN) *</label>
+                            <Input className="rounded-xl" value={form.title} onChange={e => set('title', e.target.value)} placeholder="e.g. Waiter/Waitress" />
+                        </div>
+                    )}
+                    {(form.listing_lang === 'el' || form.listing_lang === 'both') && (
+                        <div>
+                            <label className="text-sm font-medium text-foreground mb-1.5 block">Τίτλος Θέσης (EL) *</label>
+                            <Input className="rounded-xl" value={form.title_el} onChange={e => set('title_el', e.target.value)} placeholder="π.χ. Σερβιτόρος/α" />
+                        </div>
+                    )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -99,8 +121,23 @@ export default function PostJob() {
                         </Select>
                     </div>
                     <div>
-                        <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Μισθός' : 'Salary Range'}</label>
-                        <Input className="rounded-xl" value={form.salary_range} onChange={e => set('salary_range', e.target.value)} placeholder={lang === 'el' ? 'π.χ. €800-€1200/μήνα' : 'e.g. €800-€1200/month'} />
+                        <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Μισθός (€)' : 'Salary (€)'}</label>
+                        <div className="flex gap-2">
+                            <Input
+                                type="number" min="0" className="rounded-xl"
+                                value={form.salary_amount}
+                                onChange={e => set('salary_amount', e.target.value)}
+                                placeholder={lang === 'el' ? 'π.χ. 50' : 'e.g. 50'}
+                            />
+                            <Select value={form.salary_period} onValueChange={v => set('salary_period', v)}>
+                                <SelectTrigger className="rounded-xl w-36"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="hourly">{lang === 'el' ? '/ώρα' : '/hour'}</SelectItem>
+                                    <SelectItem value="daily">{lang === 'el' ? '/ημέρα' : '/day'}</SelectItem>
+                                    <SelectItem value="monthly">{lang === 'el' ? '/μήνα' : '/month'}</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
                 </div>
 

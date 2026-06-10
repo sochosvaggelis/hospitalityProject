@@ -4,6 +4,7 @@ import { Search, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import useLanguage from '@/lib/useLanguage';
+import { tIsland } from '@/lib/i18n';
 import { api } from '@/lib/api';
 import IslandMapModal from '@/components/IslandMapModal';
 
@@ -130,7 +131,7 @@ export default function Home() {
                                 <button key={island.name} onClick={() => setSelectedIsland(island)}
                                     className="group relative border border-border/50 rounded-2xl overflow-hidden aspect-[3/4] flex flex-col items-center justify-between p-4 hover:border-primary/40 hover:scale-105 hover:shadow-xl transition-all duration-300 text-left"
                                     style={{ background: 'hsl(40 50% 97%)', boxShadow: '0 2px 12px -2px rgba(194,160,100,0.2)' }}>
-                                    <span className="font-display font-semibold text-sm text-foreground group-hover:text-primary transition-colors z-10 text-center">{island.name}</span>
+                                    <span className="font-display font-semibold text-sm text-foreground group-hover:text-primary transition-colors z-10 text-center">{tIsland(island.name, lang)}</span>
                                     <div className="flex-1 flex items-center justify-center w-full py-2">
                                         {island.outline_url && (
                                             <img src={island.outline_url} alt={island.name}

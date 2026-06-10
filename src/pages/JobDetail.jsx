@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, MapPin, Clock, Users, Briefcase, Calendar, DollarSign, CheckCircle, Award, FileText, ExternalLink } from 'lucide-react';
+import { formatSalary } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
@@ -81,7 +82,7 @@ export default function JobDetail() {
                         </div>
                     )}
                     <div className="flex-1">
-                        <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground">{job.title}</h1>
+                        <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground">{lang === 'el' && job.title_el ? job.title_el : job.title}</h1>
                         <Link to={`/hotels/${job.hotel_user_id}`} className="text-lg text-muted-foreground hover:text-primary transition-colors mt-1 inline-block">
                             {job.hotel_name}
                         </Link>
@@ -92,7 +93,7 @@ export default function JobDetail() {
                     <Badge variant="secondary" className="gap-1 rounded-lg py-1.5 px-3"><MapPin className="w-3.5 h-3.5" />{job.location}</Badge>
                     <Badge variant="outline" className="gap-1 rounded-lg py-1.5 px-3"><Clock className="w-3.5 h-3.5" />{empLabel(job.employment_type)}</Badge>
                     {job.positions_available && <Badge variant="outline" className="gap-1 rounded-lg py-1.5 px-3"><Users className="w-3.5 h-3.5" />{job.positions_available} {t('jobs_positions')}</Badge>}
-                    {job.salary_range && <Badge variant="secondary" className="gap-1 rounded-lg py-1.5 px-3 bg-primary/10 text-primary border-0"><DollarSign className="w-3.5 h-3.5" />{job.salary_range}</Badge>}
+                    {job.salary_amount && <Badge variant="secondary" className="gap-1 rounded-lg py-1.5 px-3 bg-primary/10 text-primary border-0"><DollarSign className="w-3.5 h-3.5" />{formatSalary(job.salary_amount, job.salary_period, lang)}</Badge>}
                     {job.start_date && <Badge variant="outline" className="gap-1 rounded-lg py-1.5 px-3"><Calendar className="w-3.5 h-3.5" />{job.start_date}</Badge>}
                 </div>
 
