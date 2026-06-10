@@ -84,9 +84,9 @@ export default function IslandMapModal({ island, onClose }) {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-4">
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-modal-backdrop" />
             <div
-                className="relative z-10 w-full max-w-6xl mx-0 sm:mx-4 rounded-none sm:rounded-2xl overflow-hidden shadow-2xl flex flex-col"
+                className="relative z-10 w-full max-w-6xl mx-0 sm:mx-4 rounded-none sm:rounded-2xl overflow-hidden shadow-2xl flex flex-col animate-modal-card"
                 style={{ height: '100dvh', maxHeight: '100dvh' }}
                 onMouseDown={e => e.stopPropagation()}
                 onClick={e => e.stopPropagation()}
