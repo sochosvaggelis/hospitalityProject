@@ -91,7 +91,7 @@ export default function IslandMapModal({ island, onClose }) {
                         )}
                         <span style={{ fontFamily: "'Cinzel', serif", color: '#5a3e1b' }} className="font-bold text-base sm:text-lg">{displayName}</span>
                     </div>
-                    <button onClick={onClose} style={{ color: '#8a6a3a' }} className="hover:opacity-70 transition-opacity text-lg sm:text-xl leading-none p-1">✕</button>
+                    <button onClick={onClose} style={{ color: '#8a6a3a' }} className="hover:opacity-70 transition-opacity text-lg sm:text-xl leading-none w-11 h-11 flex items-center justify-center rounded-lg">✕</button>
                 </div>
                 {/* Map fills whatever space remains below the header */}
                 <div className="flex-1 min-h-0">
