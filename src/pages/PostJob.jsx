@@ -22,9 +22,12 @@ export default function PostJob() {
     const [empMap, setEmpMap] = useState({});
     const [islands, setIslands] = useState([]);
     const [form, setForm] = useState({
-        title: '', title_el: '', listing_lang: 'en', location: '', description: '', requirements: '',
+        title: '', title_el: '', listing_lang: 'en', location: '',
+        description: '', description_el: '',
+        requirements: '', requirements_el: '',
+        benefits: '', benefits_el: '',
         employment_type: '', salary_amount: '', salary_period: 'monthly', positions_available: 1,
-        start_date: '', category: '', benefits: '', status: 'active',
+        start_date: '', category: '', status: 'active',
     });
 
     useEffect(() => {
@@ -167,19 +170,64 @@ export default function PostJob() {
                     <Input className="rounded-xl" value={form.start_date} onChange={e => set('start_date', e.target.value)} placeholder={lang === 'el' ? 'π.χ. Ιούνιος 2026' : 'e.g. June 2026'} />
                 </div>
 
-                <div>
-                    <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Περιγραφή Θέσης *' : 'Job Description *'}</label>
-                    <Textarea className="rounded-xl min-h-[120px]" value={form.description} onChange={e => set('description', e.target.value)} />
+                {/* Description */}
+                <div className={`grid gap-4 ${form.listing_lang === 'both' ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
+                    {(form.listing_lang === 'en' || form.listing_lang === 'both') && (
+                        <div>
+                            <label className="text-sm font-medium text-foreground mb-1.5 block">
+                                {form.listing_lang === 'both' ? 'EN Job Description *' : 'Job Description *'}
+                            </label>
+                            <Textarea className="rounded-xl min-h-[120px]" value={form.description} onChange={e => set('description', e.target.value)} />
+                        </div>
+                    )}
+                    {(form.listing_lang === 'el' || form.listing_lang === 'both') && (
+                        <div>
+                            <label className="text-sm font-medium text-foreground mb-1.5 block">
+                                {form.listing_lang === 'both' ? 'EL Περιγραφή Θέσης *' : 'Περιγραφή Θέσης *'}
+                            </label>
+                            <Textarea className="rounded-xl min-h-[120px]" value={form.description_el} onChange={e => set('description_el', e.target.value)} />
+                        </div>
+                    )}
                 </div>
 
-                <div>
-                    <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Απαιτήσεις' : 'Requirements'}</label>
-                    <Textarea className="rounded-xl min-h-[80px]" value={form.requirements} onChange={e => set('requirements', e.target.value)} />
+                {/* Requirements */}
+                <div className={`grid gap-4 ${form.listing_lang === 'both' ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
+                    {(form.listing_lang === 'en' || form.listing_lang === 'both') && (
+                        <div>
+                            <label className="text-sm font-medium text-foreground mb-1.5 block">
+                                {form.listing_lang === 'both' ? 'EN Requirements' : 'Requirements'}
+                            </label>
+                            <Textarea className="rounded-xl min-h-[80px]" value={form.requirements} onChange={e => set('requirements', e.target.value)} />
+                        </div>
+                    )}
+                    {(form.listing_lang === 'el' || form.listing_lang === 'both') && (
+                        <div>
+                            <label className="text-sm font-medium text-foreground mb-1.5 block">
+                                {form.listing_lang === 'both' ? 'EL Απαιτήσεις' : 'Απαιτήσεις'}
+                            </label>
+                            <Textarea className="rounded-xl min-h-[80px]" value={form.requirements_el} onChange={e => set('requirements_el', e.target.value)} />
+                        </div>
+                    )}
                 </div>
 
-                <div>
-                    <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Παροχές' : 'Benefits'}</label>
-                    <Textarea className="rounded-xl min-h-[80px]" value={form.benefits} onChange={e => set('benefits', e.target.value)} placeholder={lang === 'el' ? 'π.χ. Διαμονή, Γεύματα' : 'e.g. Accommodation, Meals'} />
+                {/* Benefits */}
+                <div className={`grid gap-4 ${form.listing_lang === 'both' ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
+                    {(form.listing_lang === 'en' || form.listing_lang === 'both') && (
+                        <div>
+                            <label className="text-sm font-medium text-foreground mb-1.5 block">
+                                {form.listing_lang === 'both' ? 'EN Benefits' : 'Benefits'}
+                            </label>
+                            <Textarea className="rounded-xl min-h-[80px]" value={form.benefits} onChange={e => set('benefits', e.target.value)} placeholder="e.g. Accommodation, Meals" />
+                        </div>
+                    )}
+                    {(form.listing_lang === 'el' || form.listing_lang === 'both') && (
+                        <div>
+                            <label className="text-sm font-medium text-foreground mb-1.5 block">
+                                {form.listing_lang === 'both' ? 'EL Παροχές' : 'Παροχές'}
+                            </label>
+                            <Textarea className="rounded-xl min-h-[80px]" value={form.benefits_el} onChange={e => set('benefits_el', e.target.value)} placeholder="π.χ. Διαμονή, Γεύματα" />
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex gap-3 justify-end pt-2">

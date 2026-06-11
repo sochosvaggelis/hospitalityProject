@@ -48,18 +48,51 @@ router.post('/', authenticate, async (req, res) => {
     status: 'pending',
   }).select().single();
   if (error) return res.status(500).json({ error: error.message });
+
+  // Notify the hotel owner
+  const { data: hotelProfile } = await supabase
+    .from('profiles')
+    .select('email')
+    .eq('id', job.hotel_user_id)
+    .single();
+  if (hotelProfile?.email) {
+    await supabase.from('notifications').insert({
+      user_email: hotelProfile.email,
+      type: 'new_application',
+      job_title: job.title,
+      hotel_name: job.hotel_name,
+      applicant_name: req.user.full_name,
+      job_id,
+    });
+  }
+
   res.status(201).json(data);
 });
 
 // Hotel only: update application status
 router.patch('/:id/status', authenticate, async (req, res) => {
   const { status } = req.body;
-  const { data: app } = await supabase.from('applications').select('hotel_user_id').eq('id', req.params.id).single();
+  const { data: app } = await supabase
+    .from('applications')
+    .select('hotel_user_id, applicant_email, job_title, hotel_name, job_id')
+    .eq('id', req.params.id)
+    .single();
   if (!app) return res.status(404).json({ error: 'Application not found' });
   if (app.hotel_user_id !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
 
   const { data, error } = await supabase.from('applications').update({ status }).eq('id', req.params.id).select().single();
   if (error) return res.status(500).json({ error: error.message });
+
+  if (status === 'accepted' || status === 'rejected') {
+    await supabase.from('notifications').insert({
+      user_email: app.applicant_email,
+      type: status,
+      job_title: app.job_title,
+      hotel_name: app.hotel_name,
+      job_id: app.job_id,
+    });
+  }
+
   res.json(data);
 });
 

@@ -1,10 +1,25 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, Waves, MessageCircle, LayoutDashboard, User, Briefcase, Globe, LogIn, Shield, Plus, LogOut, Star } from 'lucide-react';
+import { Menu, X, Waves, MessageCircle, LayoutDashboard, User, Briefcase, Globe, LogIn, Shield, Plus, LogOut, Star, Bell, CheckCircle, XCircle, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import useLanguage from '@/lib/useLanguage';
 import { useAuth } from '@/lib/AuthContext';
+import { api } from '@/lib/api';
+import moment from 'moment';
+
+function NotificationIcon({ type }) {
+    if (type === 'accepted') return <CheckCircle className="w-4 h-4 text-green-600" />;
+    if (type === 'rejected') return <XCircle className="w-4 h-4 text-red-500" />;
+    return <UserPlus className="w-4 h-4 text-blue-600" />;
+}
+
+function NotificationDot({ type }) {
+    if (type === 'accepted') return 'bg-green-100';
+    if (type === 'rejected') return 'bg-red-100';
+    return 'bg-blue-100';
+}
 
 export default function Navbar() {
     const { t, lang, setLanguage } = useLanguage();
@@ -12,9 +27,42 @@ export default function Navbar() {
     const location = useLocation();
     const navigate = useNavigate();
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const [notifications, setNotifications] = useState([]);
+    const [notifOpen, setNotifOpen] = useState(false);
+    const role = me?.role;
+
+    const loadNotifications = () => {
+        api.getNotifications()
+            .then(data => {
+                setNotifications(data || []);
+                setUnreadCount((data || []).filter(n => !n.read).length);
+            })
+            .catch(() => {});
+    };
+
+    useEffect(() => {
+        if (!isAuthenticated || role === 'admin') return;
+        loadNotifications();
+        const interval = setInterval(loadNotifications, 60000);
+        return () => clearInterval(interval);
+    }, [isAuthenticated, role]);
+
+    const handleOpenNotif = (open) => setNotifOpen(open);
+
+    const handleReadNotif = (n) => {
+        if (!n.read) {
+            api.markNotificationRead(n.id).catch(() => {});
+            setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x));
+            setUnreadCount(prev => Math.max(0, prev - 1));
+        }
+        if (n.job_id) {
+            setNotifOpen(false);
+            navigate('/dashboard', { state: { expandJobId: n.job_id } });
+        }
+    };
 
     const isActive = (path) => location.pathname === path;
-    const role = me?.role;
 
     const navLinks = [
         { to: '/', label: t('nav_home'), icon: Waves },
@@ -32,6 +80,12 @@ export default function Navbar() {
     const handleLogout = async () => {
         await logout();
         navigate('/');
+    };
+
+    const notifLabel = (n) => {
+        if (n.type === 'accepted') return lang === 'el' ? 'Η αίτησή σας έγινε αποδεκτή' : 'Your application was accepted';
+        if (n.type === 'rejected') return lang === 'el' ? 'Η αίτησή σας απορρίφθηκε' : 'Your application was rejected';
+        return lang === 'el' ? `Νέα αίτηση από ${n.applicant_name}` : `New application from ${n.applicant_name}`;
     };
 
     return (
@@ -55,6 +109,56 @@ export default function Navbar() {
                     </nav>
 
                     <div className="flex items-center gap-2">
+                        {/* Notification bell */}
+                        {isAuthenticated && role !== 'admin' && (
+                            <Popover open={notifOpen} onOpenChange={handleOpenNotif}>
+                                <PopoverTrigger asChild>
+                                    <button className="relative p-2 rounded-lg hover:bg-muted transition-colors">
+                                        <Bell className={`w-4 h-4 ${unreadCount > 0 ? 'text-primary' : 'text-muted-foreground'}`} />
+                                        {unreadCount > 0 && (
+                                            <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center leading-none">
+                                                {unreadCount > 9 ? '9+' : unreadCount}
+                                            </span>
+                                        )}
+                                    </button>
+                                </PopoverTrigger>
+                                <PopoverContent align="end" sideOffset={8} className="w-80 p-0 rounded-2xl shadow-xl border-border/50 overflow-hidden">
+                                    <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between">
+                                        <span className="font-semibold text-sm text-foreground">
+                                            {lang === 'el' ? 'Ειδοποιήσεις' : 'Notifications'}
+                                        </span>
+                                        {notifications.length > 0 && (
+                                            <span className="text-xs text-muted-foreground">
+                                                {notifications.length} {lang === 'el' ? 'σύνολο' : 'total'}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="max-h-[400px] overflow-y-auto divide-y divide-border/30">
+                                        {notifications.length === 0 ? (
+                                            <div className="flex flex-col items-center gap-2 py-10 text-center">
+                                                <Bell className="w-8 h-8 text-muted-foreground/30" />
+                                                <p className="text-sm text-muted-foreground">
+                                                    {lang === 'el' ? 'Δεν υπάρχουν ειδοποιήσεις' : 'No notifications yet'}
+                                                </p>
+                                            </div>
+                                        ) : notifications.map(n => (
+                                            <div key={n.id} onClick={() => handleReadNotif(n)} className={`flex items-start gap-3 px-4 py-3 transition-colors hover:bg-muted/40 cursor-pointer ${!n.read ? 'bg-primary/5' : ''}`}>
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${NotificationDot({ type: n.type })}`}>
+                                                    <NotificationIcon type={n.type} />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-xs font-medium text-foreground leading-snug">{notifLabel(n)}</p>
+                                                    <p className="text-xs text-muted-foreground mt-0.5 truncate">{n.job_title}</p>
+                                                    <p className="text-[11px] text-muted-foreground/70 mt-0.5">{moment(n.created_at).fromNow()}</p>
+                                                </div>
+                                                {!n.read && <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0 mt-2" />}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+                        )}
+
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-9 w-9"><Globe className="w-4 h-4" /></Button>

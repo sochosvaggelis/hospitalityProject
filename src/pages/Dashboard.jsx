@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Briefcase, FileText, CheckCircle, XCircle, Clock, Plus, ExternalLink, ChevronDown, ChevronUp, Users, MessageCircle, AlertCircle, User, MapPin, Award, Languages, Star, LayoutDashboard, Pencil, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Briefcase, FileText, CheckCircle, XCircle, Clock, Plus, ExternalLink, ChevronDown, Users, MessageCircle, AlertCircle, User, MapPin, Award, Languages, Star, LayoutDashboard, Pencil, Trash2, NotebookPen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -12,13 +12,20 @@ import useLanguage from '@/lib/useLanguage';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
 import moment from 'moment';
+import toast from 'react-hot-toast';
 
-const statusColors = {
-    pending: 'bg-yellow-100 text-yellow-800', reviewed: 'bg-blue-100 text-blue-800',
-    accepted: 'bg-green-100 text-green-800', rejected: 'bg-red-100 text-red-800',
-    withdrawn: 'bg-gray-100 text-gray-800', active: 'bg-green-100 text-green-800',
-    closed: 'bg-gray-100 text-gray-800', draft: 'bg-yellow-100 text-yellow-800',
+const STATUS_COLORS = {
+    pending:   { badge: 'bg-yellow-100 text-yellow-800', icon: 'bg-yellow-50 text-yellow-600' },
+    reviewed:  { badge: 'bg-blue-100 text-blue-800',     icon: 'bg-blue-50 text-blue-600' },
+    accepted:  { badge: 'bg-green-100 text-green-800',   icon: 'bg-green-50 text-green-600' },
+    rejected:  { badge: 'bg-red-100 text-red-800',       icon: 'bg-red-50 text-red-600' },
+    withdrawn: { badge: 'bg-gray-100 text-gray-600',     icon: 'bg-gray-100 text-gray-500' },
+    active:    { badge: 'bg-green-100 text-green-800',   icon: 'bg-green-50 text-green-600' },
+    closed:    { badge: 'bg-gray-100 text-gray-600',     icon: 'bg-gray-100 text-gray-500' },
+    draft:     { badge: 'bg-yellow-100 text-yellow-800', icon: 'bg-yellow-50 text-yellow-600' },
 };
+const statusColors = Object.fromEntries(Object.entries(STATUS_COLORS).map(([k, v]) => [k, v.badge]));
+
 
 function StatCard({ icon: Icon, label, value, color }) {
     return (
@@ -35,15 +42,57 @@ export default function Dashboard() {
     const { t, lang } = useLanguage();
     const { me, isLoading: authLoading } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
     const [applications, setApplications] = useState([]);
     const [jobs, setJobs] = useState([]);
     const [conversations, setConversations] = useState([]);
     const [favorites, setFavorites] = useState(new Set()); // set of applicant_emails
     const [loading, setLoading] = useState(true);
     const [expandedJobIds, setExpandedJobIds] = useState(new Set());
+    const [statusFilter, setStatusFilter] = useState(null); // null | 'pending' | 'accepted' | 'active'
     const [profileModal, setProfileModal] = useState(null); // { loading, data }
     const [editModal, setEditModal] = useState(null); // { job, form, saving }
     const [deleteConfirm, setDeleteConfirm] = useState(null); // jobId
+
+    // Feature: Sorting
+    const [sortBy, setSortBy] = useState('newest'); // 'newest' | 'oldest' | 'most_apps'
+
+    // Feature: Unread badge — seen application IDs from localStorage
+    const [seenAppIds, setSeenAppIds] = useState(() => {
+        try {
+            const stored = localStorage.getItem('seen_app_ids');
+            return stored ? new Set(JSON.parse(stored)) : new Set();
+        } catch {
+            return new Set();
+        }
+    });
+
+    // Feature: Applicant notes — { email: note } from localStorage
+    const [applicantNotes, setApplicantNotes] = useState(() => {
+        try {
+            const stored = localStorage.getItem('applicant_notes');
+            return stored ? JSON.parse(stored) : {};
+        } catch {
+            return {};
+        }
+    });
+
+    // Feature: Note textarea open state per app id
+    const [openNoteIds, setOpenNoteIds] = useState(new Set());
+
+    // Accept confirmation dialog
+    const [acceptConfirm, setAcceptConfirm] = useState(null); // appId | null
+
+    useEffect(() => {
+        const expandJobId = location.state?.expandJobId;
+        if (expandJobId) {
+            setExpandedJobIds(prev => new Set([...prev, expandJobId]));
+            navigate(location.pathname, { replace: true, state: {} });
+            setTimeout(() => {
+                document.getElementById(`job-${expandJobId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 300);
+        }
+    }, [location.state]);
 
     useEffect(() => {
         if (!me) return;
@@ -76,10 +125,70 @@ export default function Dashboard() {
     const pendingApps = applications.filter(a => a.status === 'pending').length;
     const acceptedApps = applications.filter(a => a.status === 'accepted').length;
     const activeJobs = jobs.filter(j => j.status === 'active').length;
+    const draftJobs = jobs.filter(j => j.status === 'draft').length;
+
+    const jobsWithPending = new Set(applications.filter(a => a.status === 'pending').map(a => a.job_id));
+
+    const baseFilteredJobs = statusFilter === 'pending'
+        ? jobs.filter(j => jobsWithPending.has(j.id))
+        : statusFilter
+            ? jobs.filter(j => j.status === statusFilter)
+            : jobs;
+
+    // Feature: Sorting — sort filteredJobs
+    const filteredJobs = [...baseFilteredJobs].sort((a, b) => {
+        if (sortBy === 'oldest') return new Date(a.created_at) - new Date(b.created_at);
+        if (sortBy === 'most_apps') {
+            const aCount = applications.filter(ap => ap.job_id === a.id).length;
+            const bCount = applications.filter(ap => ap.job_id === b.id).length;
+            return bCount - aCount;
+        }
+        // default: newest first
+        return new Date(b.created_at) - new Date(a.created_at);
+    });
+
+    const handleJobStatus = async (jobId, newStatus) => {
+        await api.updateJob(jobId, { status: newStatus });
+        setJobs(prev => prev.map(j => j.id === jobId ? { ...j, status: newStatus } : j));
+    };
 
     const handleAppStatus = async (appId, newStatus) => {
         await api.updateApplicationStatus(appId, newStatus);
         setApplications(prev => prev.map(a => a.id === appId ? { ...a, status: newStatus } : a));
+    };
+
+    const handleConfirmAccept = async () => {
+        const appId = acceptConfirm;
+        const app = applications.find(a => a.id === appId);
+        setAcceptConfirm(null);
+        if (!app) return;
+
+        // Accept this applicant
+        await api.updateApplicationStatus(appId, 'accepted');
+
+        // Reject all others for the same job (skip already rejected/withdrawn/accepted)
+        const others = applications.filter(a =>
+            a.job_id === app.job_id &&
+            a.id !== appId &&
+            !['rejected', 'withdrawn', 'accepted'].includes(a.status)
+        );
+        await Promise.all(others.map(a => api.updateApplicationStatus(a.id, 'rejected')));
+
+        // Close the job
+        await api.updateJob(app.job_id, { status: 'closed' });
+
+        setApplications(prev => prev.map(a => {
+            if (a.id === appId) return { ...a, status: 'accepted' };
+            if (others.find(o => o.id === a.id)) return { ...a, status: 'rejected' };
+            return a;
+        }));
+        setJobs(prev => prev.map(j => j.id === app.job_id ? { ...j, status: 'closed' } : j));
+
+        toast.success(
+            lang === 'el'
+                ? `Αποδοχή επιτυχής — ${others.length > 0 ? `${others.length} υποψήφιοι απορρίφθηκαν` : 'κανείς άλλος δεν ήταν σε αναμονή'} — η αγγελία έκλεισε.`
+                : `Accepted — ${others.length > 0 ? `${others.length} other applicant(s) rejected` : 'no others were pending'} — job closed.`
+        );
     };
 
     const hasConversation = (app) =>
@@ -109,15 +218,20 @@ export default function Dashboard() {
     const handleOpenEdit = (job) => {
         setEditModal({ job, saving: false, form: {
             title: job.title || '',
+            title_el: job.title_el || '',
+            listing_lang: job.listing_lang || 'en',
             location: job.location || '',
             description: job.description || '',
+            description_el: job.description_el || '',
             requirements: job.requirements || '',
+            requirements_el: job.requirements_el || '',
             employment_type: job.employment_type || '',
             salary_range: job.salary_range || '',
             positions_available: job.positions_available || 1,
             start_date: job.start_date || '',
             category: job.category || '',
             benefits: job.benefits || '',
+            benefits_el: job.benefits_el || '',
             status: job.status || 'active',
         }});
     };
@@ -149,6 +263,54 @@ export default function Dashboard() {
         navigate('/messages');
     };
 
+    // Feature: Unread badge — mark apps as seen when job is expanded
+    const handleToggleExpand = (jobId) => {
+        setExpandedJobIds(prev => {
+            const next = new Set(prev);
+            if (next.has(jobId)) {
+                next.delete(jobId);
+            } else {
+                next.add(jobId);
+                // Mark all apps for this job as seen
+                const jobAppIds = applications.filter(a => a.job_id === jobId).map(a => a.id);
+                setSeenAppIds(prevSeen => {
+                    const nextSeen = new Set(prevSeen);
+                    jobAppIds.forEach(id => nextSeen.add(id));
+                    try { localStorage.setItem('seen_app_ids', JSON.stringify([...nextSeen])); } catch {}
+                    return nextSeen;
+                });
+            }
+            return next;
+        });
+    };
+
+    // Feature: Applicant notes — save note on change
+    const handleNoteChange = (email, value) => {
+        setApplicantNotes(prev => {
+            const next = { ...prev, [email]: value };
+            try { localStorage.setItem('applicant_notes', JSON.stringify(next)); } catch {}
+            return next;
+        });
+    };
+
+    const handleToggleNote = (appId) => {
+        setOpenNoteIds(prev => {
+            const next = new Set(prev);
+            next.has(appId) ? next.delete(appId) : next.add(appId);
+            return next;
+        });
+    };
+
+
+    // Feature: Empty state per filter — friendly messages
+    const emptyStateMessage = () => {
+        if (statusFilter === 'draft') return lang === 'el' ? 'Δεν υπάρχουν πρόχειρα' : 'No draft jobs';
+        if (statusFilter === 'pending') return lang === 'el' ? 'Δεν υπάρχουν αγγελίες με αιτήσεις σε αναμονή' : 'No jobs with pending applications';
+        if (statusFilter === 'active') return lang === 'el' ? 'Δεν υπάρχουν ενεργές αγγελίες' : 'No active jobs';
+        if (statusFilter === 'closed') return lang === 'el' ? 'Δεν υπάρχουν κλειστές αγγελίες' : 'No closed jobs';
+        return t('common_no_data');
+    };
+
     return (
         <>
         <div style={{ background: '#eef4fd', minHeight: '100vh' }}>
@@ -162,48 +324,129 @@ export default function Dashboard() {
                 </div>
 
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                    <StatCard icon={Briefcase} label={lang === 'el' ? 'Σύνολο Αγγελιών' : 'Total Jobs'} value={jobs.length} color="bg-primary/10 text-primary" />
+                    <StatCard icon={CheckCircle} label={t('dash_active_jobs')} value={activeJobs} color={STATUS_COLORS.active.icon} />
                     <StatCard icon={FileText} label={t('dash_total_apps')} value={applications.length} color="bg-primary/10 text-primary" />
-                    <StatCard icon={Clock} label={t('dash_pending')} value={pendingApps} color="bg-yellow-50 text-yellow-600" />
-                    <StatCard icon={CheckCircle} label={t('dash_accepted')} value={acceptedApps} color="bg-green-50 text-green-600" />
-                    {isHotel ? <StatCard icon={Briefcase} label={t('dash_active_jobs')} value={activeJobs} color="bg-blue-50 text-blue-600" /> : <StatCard icon={XCircle} label={t('dash_rejected')} value={applications.filter(a => a.status === 'rejected').length} color="bg-red-50 text-red-600" />}
+                    <StatCard icon={Clock} label={t('dash_pending')} value={pendingApps} color={STATUS_COLORS.pending.icon} />
                 </div>
 
                 {isHotel && (
                     <div className="mb-8">
-                        <h2 className="font-display text-xl font-bold text-foreground mb-4">{t('dash_my_jobs')}</h2>
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="font-display text-xl font-bold text-foreground">{t('dash_my_jobs')}</h2>
+                            <button
+                                onClick={() => {
+                                    const allExpanded = filteredJobs.every(j => expandedJobIds.has(j.id));
+                                    if (allExpanded) {
+                                        setExpandedJobIds(new Set());
+                                    } else {
+                                        const newIds = filteredJobs.map(j => j.id);
+                                        // Mark all their apps as seen
+                                        const allAppIds = applications.filter(a => newIds.includes(a.job_id)).map(a => a.id);
+                                        setSeenAppIds(prevSeen => {
+                                            const nextSeen = new Set(prevSeen);
+                                            allAppIds.forEach(id => nextSeen.add(id));
+                                            try { localStorage.setItem('seen_app_ids', JSON.stringify([...nextSeen])); } catch {}
+                                            return nextSeen;
+                                        });
+                                        setExpandedJobIds(new Set(newIds));
+                                    }
+                                }}
+                                className="flex items-center gap-1.5 text-sm text-primary hover:underline"
+                            >
+                                {filteredJobs.every(j => expandedJobIds.has(j.id))
+                                    ? (lang === 'el' ? 'Σύμπτυξη όλων' : 'Collapse all')
+                                    : (lang === 'el' ? 'Ανάπτυξη όλων' : 'Expand all')}
+                                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${filteredJobs.every(j => expandedJobIds.has(j.id)) ? 'rotate-180' : ''}`} />
+                            </button>
+                        </div>
+
+                        {/* Filter pills + Sort dropdown */}
+                        <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+                            <div className="flex gap-2 flex-wrap">
+                                {[
+                                    { key: null,       label: lang === 'el' ? 'Όλες' : 'All',      count: jobs.length },
+                                    { key: 'active',   label: lang === 'el' ? 'Ενεργές' : 'Active',  count: activeJobs },
+                                    { key: 'closed',   label: lang === 'el' ? 'Κλειστές' : 'Closed', count: jobs.filter(j => j.status === 'closed').length },
+                                    { key: 'draft',    label: lang === 'el' ? 'Πρόχειρα' : 'Drafts', count: draftJobs },
+                                    { key: 'pending',  label: lang === 'el' ? 'Σε αναμονή' : 'Pending', count: jobsWithPending.size },
+                                ].map(({ key, label, count }) => (
+                                    <button
+                                        key={String(key)}
+                                        onClick={() => setStatusFilter(key)}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                                            statusFilter === key
+                                                ? 'bg-primary text-primary-foreground shadow-sm'
+                                                : 'bg-card border border-border/50 text-muted-foreground hover:text-foreground hover:border-border'
+                                        }`}
+                                    >
+                                        {label}
+                                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${statusFilter === key ? 'bg-white/20' : 'bg-muted'}`}>{count}</span>
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Feature: Sort dropdown */}
+                            <select
+                                value={sortBy}
+                                onChange={e => setSortBy(e.target.value)}
+                                className="text-xs border border-border/50 rounded-xl px-3 py-1.5 bg-card text-foreground focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                            >
+                                <option value="newest">{lang === 'el' ? 'Νεότερες πρώτα' : 'Newest first'}</option>
+                                <option value="oldest">{lang === 'el' ? 'Παλαιότερες πρώτα' : 'Oldest first'}</option>
+                                <option value="most_apps">{lang === 'el' ? 'Περισσότερες αιτήσεις' : 'Most applications'}</option>
+                            </select>
+                        </div>
+
                         <div className="space-y-3">
-                            {jobs.length === 0 ? (
-                                <p className="text-muted-foreground text-center py-8">{t('common_no_data')}</p>
-                            ) : jobs.map(job => {
+                            {filteredJobs.length === 0 ? (
+                                <p className="text-muted-foreground text-center py-8">{emptyStateMessage()}</p>
+                            ) : filteredJobs.map(job => {
                                 const jobApps = applications.filter(a => a.job_id === job.id);
                                 const isExpanded = expandedJobIds.has(job.id);
                                 return (
-                                    <div key={job.id} className="bg-card rounded-xl border border-border/50 overflow-hidden">
+                                    <div key={job.id} id={`job-${job.id}`} className="bg-card rounded-xl border border-border/50 overflow-hidden">
                                         {/* Job header row — click to expand */}
-                                        <button
-                                            className="w-full p-4 flex items-center justify-between gap-4 hover:bg-accent/30 transition-colors text-left"
-                                            onClick={() => setExpandedJobIds(prev => {
-                                                const next = new Set(prev);
-                                                next.has(job.id) ? next.delete(job.id) : next.add(job.id);
-                                                return next;
-                                            })}
+                                        <div
+                                            className="w-full p-4 flex items-center justify-between gap-4 hover:bg-accent/30 transition-colors cursor-pointer group/row"
+                                            onClick={() => handleToggleExpand(job.id)}
                                         >
                                             <div className="flex-1 min-w-0">
-                                                <p className="font-medium text-foreground">{job.title}</p>
+                                                <div className="flex items-center gap-1.5">
+                                                    <Link
+                                                        to={`/jobs/${job.id}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        onClick={e => e.stopPropagation()}
+                                                        className="font-medium text-foreground hover:text-primary group-hover/row:text-primary hover:underline group-hover/row:underline transition-colors inline-flex items-center gap-1 group"
+                                                    >
+                                                        {job.title}
+                                                        <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-60 group-hover/row:opacity-60 transition-opacity flex-shrink-0" />
+                                                    </Link>
+                                                </div>
                                                 <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                                                     <span>{job.location}</span>
                                                     <span>·</span>
                                                     <Users className="w-3 h-3" />
                                                     <span>{jobApps.length} {lang === 'el' ? 'αιτήσεις' : 'applications'}</span>
                                                     {jobApps.filter(a => a.status === 'pending').length > 0 && (
-                                                        <span className="bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded-md text-xs font-medium">
+                                                        <span className={`${STATUS_COLORS.pending.badge} px-1.5 py-0.5 rounded-md text-xs font-medium`}>
                                                             {jobApps.filter(a => a.status === 'pending').length} {lang === 'el' ? 'νέες' : 'new'}
                                                         </span>
                                                     )}
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2 flex-shrink-0">
-                                                <Badge className={`${statusColors[job.status]} border-0 rounded-lg`}>{t(`status_${job.status}`)}</Badge>
+                                                <Select value={job.status} onValueChange={val => { handleJobStatus(job.id, val); }}>
+                                                    <SelectTrigger onClick={e => e.stopPropagation()} className={`h-7 text-xs font-medium rounded-xl border-0 px-2.5 w-auto gap-1.5 ${statusColors[job.status]}`}>
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="rounded-xl">
+                                                        <SelectItem value="active" className="rounded-lg text-xs">{lang === 'el' ? 'Ενεργή' : 'Active'}</SelectItem>
+                                                        <SelectItem value="closed" className="rounded-lg text-xs">{lang === 'el' ? 'Κλειστή' : 'Closed'}</SelectItem>
+                                                        <SelectItem value="draft" className="rounded-lg text-xs">{lang === 'el' ? 'Πρόχειρο' : 'Draft'}</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
                                                 <button
                                                     onClick={e => { e.stopPropagation(); handleOpenEdit(job); }}
                                                     className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
@@ -218,9 +461,9 @@ export default function Dashboard() {
                                                 >
                                                     <Trash2 className="w-3.5 h-3.5" />
                                                 </button>
-                                                {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                                                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
                                             </div>
-                                        </button>
+                                        </div>
 
                                         {/* Expanded applications */}
                                         {isExpanded && (
@@ -229,71 +472,105 @@ export default function Dashboard() {
                                                     <p className="text-sm text-muted-foreground text-center py-6">
                                                         {lang === 'el' ? 'Δεν υπάρχουν αιτήσεις ακόμα' : 'No applications yet'}
                                                     </p>
-                                                ) : jobApps.map(app => (
-                                                    <div key={app.id} className="p-4 flex items-start justify-between gap-4">
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <button
-                                                                    onClick={() => handleViewProfile(app.applicant_email)}
-                                                                    className="font-medium text-sm text-foreground hover:text-primary hover:underline transition-colors text-left"
-                                                                >
-                                                                    {app.applicant_name}
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => handleToggleFavorite(app)}
-                                                                    className="flex-shrink-0 transition-colors"
-                                                                    title={favorites.has(app.applicant_email) ? (lang === 'el' ? 'Αφαίρεση από αγαπημένα' : 'Remove from favourites') : (lang === 'el' ? 'Προσθήκη στα αγαπημένα' : 'Add to favourites')}
-                                                                >
-                                                                    <Star className={`w-3.5 h-3.5 ${favorites.has(app.applicant_email) ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground/40 hover:text-yellow-400'}`} />
-                                                                </button>
-                                                            </div>
-                                                            <p className="text-xs text-muted-foreground">{app.applicant_email}</p>
-                                                            {app.cover_letter && (
-                                                                <p className="text-xs text-muted-foreground mt-2 line-clamp-2 italic">"{app.cover_letter}"</p>
-                                                            )}
-                                                            <div className="flex items-center gap-3 mt-2">
-                                                                <span className="text-xs text-muted-foreground">{moment(app.created_at).fromNow()}</span>
-                                                                {app.resume_url && (
-                                                                    <a href={app.resume_url} target="_blank" rel="noopener noreferrer"
-                                                                        className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
-                                                                        <FileText className="w-3 h-3" />
-                                                                        {lang === 'el' ? 'Βιογραφικό' : 'Resume'}
-                                                                        <ExternalLink className="w-3 h-3" />
-                                                                    </a>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                                                            <Select value={app.status} onValueChange={val => handleAppStatus(app.id, val)}>
-                                                                <SelectTrigger className={`h-7 text-xs font-medium rounded-xl border-0 px-2.5 w-auto gap-1.5 ${statusColors[app.status]}`}>
-                                                                    <SelectValue />
-                                                                </SelectTrigger>
-                                                                <SelectContent className="rounded-xl">
-                                                                    <SelectItem value="pending" className="rounded-lg text-xs">{lang === 'el' ? 'Νέα' : 'Pending'}</SelectItem>
-                                                                    <SelectItem value="reviewed" className="rounded-lg text-xs">{lang === 'el' ? 'Σε εξέταση' : 'Reviewed'}</SelectItem>
-                                                                    <SelectItem value="accepted" className="rounded-lg text-xs">{lang === 'el' ? 'Αποδεκτή' : 'Accepted'}</SelectItem>
-                                                                    <SelectItem value="rejected" className="rounded-lg text-xs">{lang === 'el' ? 'Απορρίφθηκε' : 'Rejected'}</SelectItem>
-                                                                </SelectContent>
-                                                            </Select>
-                                                            {app.status === 'accepted' && (
-                                                                <button
-                                                                    onClick={() => handleSendMessage(app)}
-                                                                    className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-xl font-medium transition-colors ${
-                                                                        hasConversation(app)
-                                                                            ? 'bg-primary/10 text-primary hover:bg-primary/20'
-                                                                            : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
-                                                                    }`}
-                                                                >
-                                                                    {hasConversation(app) ? (
-                                                                        <><MessageCircle className="w-3.5 h-3.5" />{lang === 'el' ? 'Μηνύματα' : 'Messages'}</>
-                                                                    ) : (
-                                                                        <><AlertCircle className="w-3.5 h-3.5" />{lang === 'el' ? 'Στείλτου μήνυμα' : 'Send message'}</>
+                                                ) : jobApps.map(app => {
+                                                    const isUnseen = !seenAppIds.has(app.id);
+                                                    const isNoteOpen = openNoteIds.has(app.id);
+                                                    const noteValue = applicantNotes[app.applicant_email] || '';
+                                                    return (
+                                                        <div key={app.id} className="p-4">
+                                                            <div className="flex items-start justify-between gap-4">
+                                                                <div className="flex items-start gap-3 flex-1 min-w-0">
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <div className="flex items-center gap-1.5">
+                                                                            {/* Feature: Unread NEW badge */}
+                                                                            {isUnseen && (
+                                                                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-blue-100 text-blue-700 leading-none">
+                                                                                    NEW
+                                                                                </span>
+                                                                            )}
+                                                                            <button
+                                                                                onClick={() => handleViewProfile(app.applicant_email)}
+                                                                                className="font-medium text-sm text-foreground hover:text-primary hover:underline transition-colors text-left"
+                                                                            >
+                                                                                {app.applicant_name}
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => handleToggleFavorite(app)}
+                                                                                className="flex-shrink-0 transition-colors"
+                                                                                title={favorites.has(app.applicant_email) ? (lang === 'el' ? 'Αφαίρεση από αγαπημένα' : 'Remove from favourites') : (lang === 'el' ? 'Προσθήκη στα αγαπημένα' : 'Add to favourites')}
+                                                                            >
+                                                                                <Star className={`w-3.5 h-3.5 ${favorites.has(app.applicant_email) ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground/40 hover:text-yellow-400'}`} />
+                                                                            </button>
+                                                                            {/* Feature: Note icon button */}
+                                                                            <button
+                                                                                onClick={() => handleToggleNote(app.id)}
+                                                                                className={`flex-shrink-0 transition-colors p-0.5 rounded ${isNoteOpen || noteValue ? 'text-amber-500 hover:text-amber-600' : 'text-muted-foreground/40 hover:text-amber-500'}`}
+                                                                                title={lang === 'el' ? 'Σημειώσεις' : 'Notes'}
+                                                                            >
+                                                                                <NotebookPen className="w-3.5 h-3.5" />
+                                                                            </button>
+                                                                        </div>
+                                                                        <p className="text-xs text-muted-foreground">{app.applicant_email}</p>
+                                                                        {app.cover_letter && (
+                                                                            <p className="text-xs text-muted-foreground mt-2 line-clamp-2 italic">"{app.cover_letter}"</p>
+                                                                        )}
+                                                                        <div className="flex items-center gap-3 mt-2">
+                                                                            <span className="text-xs text-muted-foreground">{moment(app.created_at).fromNow()}</span>
+                                                                            {app.resume_url && (
+                                                                                <a href={app.resume_url} target="_blank" rel="noopener noreferrer"
+                                                                                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                                                                                    <FileText className="w-3 h-3" />
+                                                                                    {lang === 'el' ? 'Βιογραφικό' : 'Resume'}
+                                                                                    <ExternalLink className="w-3 h-3" />
+                                                                                </a>
+                                                                            )}
+                                                                        </div>
+                                                                        {/* Feature: Applicant notes textarea */}
+                                                                        {isNoteOpen && (
+                                                                            <div className="mt-2">
+                                                                                <Textarea
+                                                                                    className="rounded-xl text-xs min-h-[64px] resize-none border-amber-200 focus:border-amber-400"
+                                                                                    placeholder={lang === 'el' ? 'Ιδιωτικές σημειώσεις για αυτόν τον υποψήφιο…' : 'Private notes about this applicant…'}
+                                                                                    value={noteValue}
+                                                                                    onChange={e => handleNoteChange(app.applicant_email, e.target.value)}
+                                                                                />
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                                                                    <Select value={app.status} onValueChange={val => val === 'accepted' ? setAcceptConfirm(app.id) : handleAppStatus(app.id, val)}>
+                                                                        <SelectTrigger className={`h-7 text-xs font-medium rounded-xl border-0 px-2.5 w-auto gap-1.5 ${statusColors[app.status]}`}>
+                                                                            <SelectValue />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent className="rounded-xl">
+                                                                            <SelectItem value="pending" className="rounded-lg text-xs">{lang === 'el' ? 'Νέα' : 'Pending'}</SelectItem>
+                                                                            <SelectItem value="reviewed" className="rounded-lg text-xs">{lang === 'el' ? 'Σε εξέταση' : 'Reviewed'}</SelectItem>
+                                                                            <SelectItem value="accepted" className="rounded-lg text-xs">{lang === 'el' ? 'Αποδεκτή' : 'Accepted'}</SelectItem>
+                                                                            <SelectItem value="rejected" className="rounded-lg text-xs">{lang === 'el' ? 'Απορρίφθηκε' : 'Rejected'}</SelectItem>
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                    {app.status === 'accepted' && (
+                                                                        <button
+                                                                            onClick={() => handleSendMessage(app)}
+                                                                            className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-xl font-medium transition-colors ${
+                                                                                hasConversation(app)
+                                                                                    ? 'bg-primary/10 text-primary hover:bg-primary/20'
+                                                                                    : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                                                                            }`}
+                                                                        >
+                                                                            {hasConversation(app) ? (
+                                                                                <><MessageCircle className="w-3.5 h-3.5" />{lang === 'el' ? 'Μηνύματα' : 'Messages'}</>
+                                                                            ) : (
+                                                                                <><AlertCircle className="w-3.5 h-3.5" />{lang === 'el' ? 'Στείλτου μήνυμα' : 'Send message'}</>
+                                                                            )}
+                                                                        </button>
                                                                     )}
-                                                                </button>
-                                                            )}
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                ))}
+                                                    );
+                                                })}
                                             </div>
                                         )}
                                     </div>
@@ -372,17 +649,50 @@ export default function Dashboard() {
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div>
-                            <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Περιγραφή' : 'Description'}</label>
-                            <Textarea className="rounded-xl min-h-[100px]" value={editModal.form.description} onChange={e => setEditModal(m => ({ ...m, form: { ...m.form, description: e.target.value } }))} />
+                        {/* Description */}
+                        <div className={`grid gap-3 ${editModal.form.listing_lang === 'both' ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                            {(editModal.form.listing_lang === 'en' || editModal.form.listing_lang === 'both') && (
+                                <div>
+                                    <label className="text-sm font-medium text-foreground mb-1.5 block">{editModal.form.listing_lang === 'both' ? 'EN Description' : (lang === 'el' ? 'Περιγραφή' : 'Description')}</label>
+                                    <Textarea className="rounded-xl min-h-[100px]" value={editModal.form.description} onChange={e => setEditModal(m => ({ ...m, form: { ...m.form, description: e.target.value } }))} />
+                                </div>
+                            )}
+                            {(editModal.form.listing_lang === 'el' || editModal.form.listing_lang === 'both') && (
+                                <div>
+                                    <label className="text-sm font-medium text-foreground mb-1.5 block">{editModal.form.listing_lang === 'both' ? 'EL Περιγραφή' : 'Περιγραφή'}</label>
+                                    <Textarea className="rounded-xl min-h-[100px]" value={editModal.form.description_el} onChange={e => setEditModal(m => ({ ...m, form: { ...m.form, description_el: e.target.value } }))} />
+                                </div>
+                            )}
                         </div>
-                        <div>
-                            <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Απαιτήσεις' : 'Requirements'}</label>
-                            <Textarea className="rounded-xl min-h-[80px]" value={editModal.form.requirements} onChange={e => setEditModal(m => ({ ...m, form: { ...m.form, requirements: e.target.value } }))} />
+                        {/* Requirements */}
+                        <div className={`grid gap-3 ${editModal.form.listing_lang === 'both' ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                            {(editModal.form.listing_lang === 'en' || editModal.form.listing_lang === 'both') && (
+                                <div>
+                                    <label className="text-sm font-medium text-foreground mb-1.5 block">{editModal.form.listing_lang === 'both' ? 'EN Requirements' : (lang === 'el' ? 'Απαιτήσεις' : 'Requirements')}</label>
+                                    <Textarea className="rounded-xl min-h-[80px]" value={editModal.form.requirements} onChange={e => setEditModal(m => ({ ...m, form: { ...m.form, requirements: e.target.value } }))} />
+                                </div>
+                            )}
+                            {(editModal.form.listing_lang === 'el' || editModal.form.listing_lang === 'both') && (
+                                <div>
+                                    <label className="text-sm font-medium text-foreground mb-1.5 block">{editModal.form.listing_lang === 'both' ? 'EL Απαιτήσεις' : 'Απαιτήσεις'}</label>
+                                    <Textarea className="rounded-xl min-h-[80px]" value={editModal.form.requirements_el} onChange={e => setEditModal(m => ({ ...m, form: { ...m.form, requirements_el: e.target.value } }))} />
+                                </div>
+                            )}
                         </div>
-                        <div>
-                            <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Παροχές' : 'Benefits'}</label>
-                            <Textarea className="rounded-xl min-h-[60px]" value={editModal.form.benefits} onChange={e => setEditModal(m => ({ ...m, form: { ...m.form, benefits: e.target.value } }))} />
+                        {/* Benefits */}
+                        <div className={`grid gap-3 ${editModal.form.listing_lang === 'both' ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                            {(editModal.form.listing_lang === 'en' || editModal.form.listing_lang === 'both') && (
+                                <div>
+                                    <label className="text-sm font-medium text-foreground mb-1.5 block">{editModal.form.listing_lang === 'both' ? 'EN Benefits' : (lang === 'el' ? 'Παροχές' : 'Benefits')}</label>
+                                    <Textarea className="rounded-xl min-h-[60px]" value={editModal.form.benefits} onChange={e => setEditModal(m => ({ ...m, form: { ...m.form, benefits: e.target.value } }))} />
+                                </div>
+                            )}
+                            {(editModal.form.listing_lang === 'el' || editModal.form.listing_lang === 'both') && (
+                                <div>
+                                    <label className="text-sm font-medium text-foreground mb-1.5 block">{editModal.form.listing_lang === 'both' ? 'EL Παροχές' : 'Παροχές'}</label>
+                                    <Textarea className="rounded-xl min-h-[60px]" value={editModal.form.benefits_el} onChange={e => setEditModal(m => ({ ...m, form: { ...m.form, benefits_el: e.target.value } }))} />
+                                </div>
+                            )}
                         </div>
                         <DialogFooter className="gap-2 pt-2">
                             <Button variant="outline" className="rounded-xl" onClick={() => setEditModal(null)}>{lang === 'el' ? 'Ακύρωση' : 'Cancel'}</Button>
@@ -409,6 +719,28 @@ export default function Dashboard() {
                 <DialogFooter className="gap-2 mt-4">
                     <Button variant="outline" className="rounded-xl" onClick={() => setDeleteConfirm(null)}>{lang === 'el' ? 'Ακύρωση' : 'Cancel'}</Button>
                     <Button variant="destructive" className="rounded-xl" onClick={handleDeleteJob}>{lang === 'el' ? 'Διαγραφή' : 'Delete'}</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
+        {/* Accept confirmation dialog */}
+        <Dialog open={!!acceptConfirm} onOpenChange={open => !open && setAcceptConfirm(null)}>
+            <DialogContent className="rounded-2xl max-w-sm">
+                <DialogHeader>
+                    <DialogTitle className="font-display">{lang === 'el' ? 'Αποδοχή υποψηφίου;' : 'Accept applicant?'}</DialogTitle>
+                </DialogHeader>
+                <p className="text-sm text-muted-foreground mt-1">
+                    {lang === 'el'
+                        ? 'Αλλάζοντας την κατάσταση σε "Αποδεκτή", οι υπόλοιποι υποψήφιοι αυτής της αγγελίας απορρίπτονται αυτόματα και η αγγελία κλείνει.'
+                        : 'Changing the status to "Accepted" will automatically reject all other applicants for this job and close the listing.'}
+                </p>
+                <DialogFooter className="gap-2 mt-4">
+                    <Button variant="outline" className="rounded-xl" onClick={() => setAcceptConfirm(null)}>
+                        {lang === 'el' ? 'Ακύρωση' : 'Cancel'}
+                    </Button>
+                    <Button className="rounded-xl" onClick={handleConfirmAccept}>
+                        {lang === 'el' ? 'Αποδοχή' : 'Accept'}
+                    </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

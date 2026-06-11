@@ -82,6 +82,10 @@ export const api = {
     getFavorites: () => get('/api/favorites'),
     toggleFavorite: (applicant_email, applicant_name) => post('/api/favorites/toggle', { applicant_email, applicant_name }),
 
+    // Notifications
+    getNotifications: () => get('/api/notifications'),
+    markNotificationRead: (id) => patch(`/api/notifications/${id}/read`, {}),
+
     // Admin
     adminUsers: () => get('/api/admin/users'),
     adminJobs: () => get('/api/admin/jobs'),

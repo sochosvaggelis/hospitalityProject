@@ -100,10 +100,20 @@ export default function JobDetail() {
                 <div className="space-y-6">
                     <div>
                         <h2 className="font-semibold text-foreground mb-3 flex items-center gap-2"><Briefcase className="w-4 h-4 text-primary" />{lang === 'el' ? 'Περιγραφή Θέσης' : 'Job Description'}</h2>
-                        <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{job.description}</p>
+                        <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{(lang === 'el' && job.description_el) ? job.description_el : job.description}</p>
                     </div>
-                    {job.requirements && <div><h2 className="font-semibold text-foreground mb-3 flex items-center gap-2"><Award className="w-4 h-4 text-primary" />{lang === 'el' ? 'Απαιτήσεις' : 'Requirements'}</h2><p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{job.requirements}</p></div>}
-                    {job.benefits && <div><h2 className="font-semibold text-foreground mb-3 flex items-center gap-2"><CheckCircle className="w-4 h-4 text-primary" />{lang === 'el' ? 'Παροχές' : 'Benefits'}</h2><p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{job.benefits}</p></div>}
+                    {(job.requirements || job.requirements_el) && (
+                        <div>
+                            <h2 className="font-semibold text-foreground mb-3 flex items-center gap-2"><Award className="w-4 h-4 text-primary" />{lang === 'el' ? 'Απαιτήσεις' : 'Requirements'}</h2>
+                            <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{(lang === 'el' && job.requirements_el) ? job.requirements_el : job.requirements}</p>
+                        </div>
+                    )}
+                    {(job.benefits || job.benefits_el) && (
+                        <div>
+                            <h2 className="font-semibold text-foreground mb-3 flex items-center gap-2"><CheckCircle className="w-4 h-4 text-primary" />{lang === 'el' ? 'Παροχές' : 'Benefits'}</h2>
+                            <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{(lang === 'el' && job.benefits_el) ? job.benefits_el : job.benefits}</p>
+                        </div>
+                    )}
                 </div>
 
                 <div className="mt-8 pt-6 border-t border-border/50 flex items-center justify-between">

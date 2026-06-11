@@ -51,7 +51,9 @@ export default function IslandMapModal({ island, onClose }) {
 
     // Pan bounds: user can drag to explore, but can't scroll more than ~1.5× the
     // visible area away from the island center (the "threshold" effect).
-    const pad = Math.min(0.12 * Math.pow(2, 13 - effectiveZoom), 2.5);
+    const isMobile = window.innerWidth < 640;
+    const padCap = isMobile ? 0.1 : 2.5;
+    const pad = Math.min(0.12 * Math.pow(2, 13 - effectiveZoom), padCap);
     const maxBounds = [
         [center[0] - pad,       center[1] - pad * 1.6],
         [center[0] + pad,       center[1] + pad * 1.6],
@@ -70,15 +72,16 @@ export default function IslandMapModal({ island, onClose }) {
         const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
         document.addEventListener('keydown', handleKey);
 
-        // Disable browser-level pinch-to-zoom while modal is open so pinch
-        // gestures are handled by Leaflet instead of scaling the whole page.
         const viewport = document.querySelector('meta[name="viewport"]');
         const originalContent = viewport?.getAttribute('content');
         viewport?.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
 
+        document.body.style.overflow = 'hidden';
+
         return () => {
             document.removeEventListener('keydown', handleKey);
             if (viewport && originalContent) viewport.setAttribute('content', originalContent);
+            document.body.style.overflow = '';
         };
     }, [onClose]);
 
@@ -91,8 +94,8 @@ export default function IslandMapModal({ island, onClose }) {
                 onMouseDown={e => e.stopPropagation()}
                 onClick={e => e.stopPropagation()}
             >
-                {/* Header always in flow — never overlapped by the map */}
-                <div className="flex-shrink-0 flex items-center justify-between px-4 sm:px-5 py-2.5 sm:py-3"
+                {/* z-[700] keeps header above all Leaflet panes (max z-index: 600) */}
+                <div className="relative z-[700] flex-shrink-0 flex items-center justify-between px-4 sm:px-5 py-2.5 sm:py-3"
                     style={{ background: 'rgba(238, 229, 210, 0.95)', borderBottom: '1px solid rgba(194,160,100,0.3)' }}>
                     <div className="flex items-center gap-2 sm:gap-3">
                         {island.outline_url && (
@@ -101,7 +104,15 @@ export default function IslandMapModal({ island, onClose }) {
                         )}
                         <span style={{ fontFamily: "'Cinzel', serif", color: '#5a3e1b' }} className="font-bold text-base sm:text-lg">{displayName}</span>
                     </div>
-                    <button onClick={onClose} style={{ color: '#8a6a3a' }} className="hover:opacity-70 transition-opacity text-lg sm:text-xl leading-none w-11 h-11 flex items-center justify-center rounded-lg">✕</button>
+                    <button
+                        onClick={onClose}
+                        style={{ color: '#8a6a3a' }}
+                        className="hover:opacity-70 transition-opacity w-11 h-11 flex items-center justify-center rounded-lg"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
                 </div>
                 {/* Map fills whatever space remains below the header */}
                 <div className="flex-1 min-h-0">
@@ -111,7 +122,7 @@ export default function IslandMapModal({ island, onClose }) {
                         minZoom={effectiveZoom}
                         maxZoom={18}
                         maxBounds={maxBounds}
-                        maxBoundsViscosity={0.85}
+                        maxBoundsViscosity={1}
                         zoomSnap={0.2}
                         zoomDelta={0.2}
                         style={{ width: '100%', height: '100%' }}

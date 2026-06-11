@@ -8,6 +8,7 @@ import profileRoutes from './routes/profile.js';
 import messageRoutes from './routes/messages.js';
 import adminRoutes from './routes/admin.js';
 import favoritesRoutes from './routes/favorites.js';
+import notificationRoutes from './routes/notifications.js';
 
 const app = express();
 
@@ -21,6 +22,7 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/conversations', messageRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/favorites', favoritesRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 app.get('/health', (_, res) => res.json({ ok: true }));
 
