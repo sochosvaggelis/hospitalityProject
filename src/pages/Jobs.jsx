@@ -1,29 +1,21 @@
-import { useState, useEffect } from 'react';
-import { Search, SlidersHorizontal, X } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Search, SlidersHorizontal, X, ChevronDown } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import JobCard from '@/components/JobCard';
 import useLanguage from '@/lib/useLanguage';
-import { api } from '@/lib/api';
+import { useJobs, useIslands, useCategories, useEmploymentTypes } from '@/lib/queries';
 
 export default function Jobs() {
     const { t, lang } = useLanguage();
-    const [jobs, setJobs] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [island, setIsland] = useState('all');
     const [category, setCategory] = useState('all');
     const [empType, setEmpType] = useState('all');
     const [listingLang, setListingLang] = useState('all');
     const [showFilters, setShowFilters] = useState(false);
-    const [categories, setCategories] = useState([]);
-    const [empTypes, setEmpTypes] = useState([]);
-    const [islands, setIslands] = useState([]);
-    const [islandData, setIslandData] = useState([]);
-    const [catMap, setCatMap] = useState({});
-    const [empMap, setEmpMap] = useState({});
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -32,36 +24,22 @@ export default function Jobs() {
         if (params.get('island')) setIsland(params.get('island'));
     }, []);
 
-    useEffect(() => {
-        const loadRefs = async () => {
-            const [cats, emps, isls] = await Promise.all([
-                api.categories(),
-                api.employmentTypes(),
-                api.islands(),
-            ]);
-            setCategories(cats?.map(c => c.key) || []);
-            setEmpTypes(emps?.map(e => e.key) || []);
-            setIslands(isls?.map(i => i.name) || []);
-            setIslandData(isls || []);
-            setCatMap(Object.fromEntries((cats || []).map(c => [c.key, { en: c.label_en, el: c.label_el }])));
-            setEmpMap(Object.fromEntries((emps || []).map(e => [e.key, { en: e.label_en, el: e.label_el }])));
-        };
-        loadRefs();
-    }, []);
+    const { data: catsData } = useCategories();
+    const { data: empsData } = useEmploymentTypes();
+    const { data: islandData = [] } = useIslands();
 
-    useEffect(() => {
-        const load = async () => {
-            setLoading(true);
-            const filters = {};
-            if (category !== 'all') filters.category = category;
-            if (empType !== 'all') filters.employment_type = empType;
-            if (listingLang !== 'all') filters.listing_lang = listingLang;
-            const data = await api.getJobs(filters);
-            setJobs(data || []);
-            setLoading(false);
-        };
-        load();
-    }, [category, empType, listingLang]);
+    const categories = useMemo(() => (catsData || []).map(c => c.key), [catsData]);
+    const empTypes = useMemo(() => (empsData || []).map(e => e.key), [empsData]);
+    const islands = useMemo(() => islandData.map(i => i.name), [islandData]);
+    const catMap = useMemo(() => Object.fromEntries((catsData || []).map(c => [c.key, { en: c.label_en, el: c.label_el }])), [catsData]);
+    const empMap = useMemo(() => Object.fromEntries((empsData || []).map(e => [e.key, { en: e.label_en, el: e.label_el }])), [empsData]);
+
+    const filters = {};
+    if (category !== 'all') filters.category = category;
+    if (empType !== 'all') filters.employment_type = empType;
+    if (listingLang !== 'all') filters.listing_lang = listingLang;
+    const { data: jobsData, isLoading: loading } = useJobs(filters);
+    const jobs = jobsData || [];
 
     const filteredJobs = jobs.filter(job => {
         if (island !== 'all' && !job.location?.toLowerCase().includes(island.toLowerCase())) return false;
@@ -95,11 +73,13 @@ export default function Jobs() {
                     <Button variant="outline" className="h-11 rounded-xl gap-2" style={{ background: 'hsl(40 55% 96%)', borderColor: 'hsl(40 35% 82%)' }}
                         onClick={() => setShowFilters(!showFilters)}>
                         <SlidersHorizontal className="w-4 h-4" />{t('jobs_filter')}
+                        <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${showFilters ? 'rotate-180' : ''}`} />
                     </Button>
                 </div>
 
-                {showFilters && (
-                    <div className="bg-card rounded-2xl border border-border/50 p-4 mb-6 flex flex-col sm:flex-row gap-4">
+                <div className={`grid transition-all duration-300 ease-in-out ${showFilters ? 'grid-rows-[1fr] opacity-100 mb-6' : 'grid-rows-[0fr] opacity-0 mb-0'}`}>
+                    <div className="overflow-hidden">
+                    <div className="bg-card rounded-2xl border border-border/50 p-4 flex flex-col sm:flex-row gap-4">
                         {[
                             { label: lang === 'el' ? 'Κατηγορία' : 'Category', value: category, onChange: setCategory, options: allCategories, labelFn: catLabel },
                             { label: lang === 'el' ? 'Τύπος Απασχόλησης' : 'Employment Type', value: empType, onChange: setEmpType, options: allEmpTypes, labelFn: empLabel },
@@ -135,7 +115,8 @@ export default function Jobs() {
                             </Select>
                         </div>
                     </div>
-                )}
+                    </div>
+                </div>
 
                 {hasFilters && (
                     <div className="flex items-center gap-2 mb-4 flex-wrap">

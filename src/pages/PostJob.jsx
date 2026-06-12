@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Briefcase, ImagePlus, X, Languages, MapPin, FileText, Euro } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import useLanguage from '@/lib/useLanguage';
 import { api } from '@/lib/api';
+import { useIslands, useCategories, useEmploymentTypes } from '@/lib/queries';
 import { useAuth } from '@/lib/AuthContext';
 import GuestView from '@/lib/GuestView';
 
@@ -33,11 +34,6 @@ export default function PostJob() {
     const { t, lang } = useLanguage();
     const { isAuthenticated, isLoading, me } = useAuth();
     const [submitting, setSubmitting] = useState(false);
-    const [categories, setCategories] = useState([]);
-    const [empTypes, setEmpTypes] = useState([]);
-    const [catMap, setCatMap] = useState({});
-    const [empMap, setEmpMap] = useState({});
-    const [islands, setIslands] = useState([]);
     const [photoFile, setPhotoFile] = useState(null);
     const [photoPreview, setPhotoPreview] = useState(null);
     const photoInputRef = useRef(null);
@@ -55,28 +51,25 @@ export default function PostJob() {
         if (isAuthenticated && me && me.role !== 'hotel') navigate('/dashboard');
     }, [isLoading, isAuthenticated, me, navigate]);
 
+    const { data: catsData } = useCategories();
+    const { data: empsData } = useEmploymentTypes();
+    const { data: islandsData } = useIslands();
+
+    const categories = useMemo(() => (catsData || []).map(c => c.key), [catsData]);
+    const empTypes = useMemo(() => (empsData || []).map(e => e.key), [empsData]);
+    const islands = useMemo(() => (islandsData || []).map(i => i.name), [islandsData]);
+    const catMap = useMemo(() => Object.fromEntries((catsData || []).map(c => [c.key, { en: c.label_en, el: c.label_el }])), [catsData]);
+    const empMap = useMemo(() => Object.fromEntries((empsData || []).map(e => [e.key, { en: e.label_en, el: e.label_el }])), [empsData]);
+
+    // Default category/type once reference data arrives
     useEffect(() => {
-        const loadRefs = async () => {
-            const [cats, emps, isls] = await Promise.all([
-                api.categories(),
-                api.employmentTypes(),
-                api.islands(),
-            ]);
-            const catKeys = cats?.map(c => c.key) || [];
-            const empKeys = emps?.map(e => e.key) || [];
-            setCategories(catKeys);
-            setEmpTypes(empKeys);
-            setIslands(isls?.map(i => i.name) || []);
-            setCatMap(Object.fromEntries((cats || []).map(c => [c.key, { en: c.label_en, el: c.label_el }])));
-            setEmpMap(Object.fromEntries((emps || []).map(e => [e.key, { en: e.label_en, el: e.label_el }])));
-            setForm(f => ({
-                ...f,
-                category: f.category || catKeys[0] || '',
-                employment_type: f.employment_type || empKeys[0] || '',
-            }));
-        };
-        loadRefs();
-    }, []);
+        if (!categories.length && !empTypes.length) return;
+        setForm(f => ({
+            ...f,
+            category: f.category || categories[0] || '',
+            employment_type: f.employment_type || empTypes[0] || '',
+        }));
+    }, [categories, empTypes]);
 
     const handleSubmit = async (status = 'active') => {
         const isDraft = status === 'draft';

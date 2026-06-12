@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, MapPin, Clock, Users, Briefcase, Calendar, DollarSign, CheckCircle, Award, FileText, ExternalLink, Pencil } from 'lucide-react';
 import { formatSalary } from '@/lib/i18n';
@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { toast } from 'sonner';
 import useLanguage from '@/lib/useLanguage';
 import { api } from '@/lib/api';
+import { useEmploymentTypes } from '@/lib/queries';
 import { useAuth } from '@/lib/AuthContext';
 import moment from 'moment';
 
@@ -24,16 +25,13 @@ export default function JobDetail() {
     const [submitting, setSubmitting] = useState(false);
     const [alreadyApplied, setAlreadyApplied] = useState(false);
     const [attachResume, setAttachResume] = useState(true);
-    const [empMap, setEmpMap] = useState({});
+    const { data: empsData } = useEmploymentTypes();
+    const empMap = useMemo(() => Object.fromEntries((empsData || []).map(e => [e.key, { en: e.label_en, el: e.label_el }])), [empsData]);
 
     useEffect(() => {
         const load = async () => {
-            const [jobData, emps] = await Promise.all([
-                api.getJob(jobId),
-                api.employmentTypes(),
-            ]);
+            const jobData = await api.getJob(jobId);
             setJob(jobData);
-            setEmpMap(Object.fromEntries((emps || []).map(e => [e.key, { en: e.label_en, el: e.label_el }])));
             if (isAuthenticated && me) {
                 const { applied } = await api.checkApplied(jobId);
                 setAlreadyApplied(applied);

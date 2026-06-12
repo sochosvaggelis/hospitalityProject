@@ -18,7 +18,7 @@ export default function Messages() {
     const [newMsg, setNewMsg] = useState('');
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
-    const messagesEndRef = useRef(null);
+    const messagesBoxRef = useRef(null);
 
     useEffect(() => {
         if (!me) return;
@@ -89,8 +89,10 @@ export default function Messages() {
         return () => { supabase.removeChannel(channel); };
     }, [activeConv?.id, me?.email]);
 
+    // Scroll only the chat panel to the latest message — never the page itself
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        const box = messagesBoxRef.current;
+        if (box) box.scrollTop = box.scrollHeight;
     }, [messages]);
 
     const loadMessages = async (convId) => {
@@ -155,7 +157,7 @@ export default function Messages() {
                                             {activeConv.job_title && <p className="text-xs text-muted-foreground">{activeConv.job_title}</p>}
                                         </div>
                                     </div>
-                                    <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                                    <div ref={messagesBoxRef} className="flex-1 overflow-y-auto p-4 space-y-3">
                                         {messages.map(msg => {
                                             const isMine = msg.sender_email === me?.email;
                                             return (
@@ -167,7 +169,6 @@ export default function Messages() {
                                                 </div>
                                             );
                                         })}
-                                        <div ref={messagesEndRef} />
                                     </div>
                                     <div className="p-4 border-t border-border/50">
                                         <div className="flex gap-2">

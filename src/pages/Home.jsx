@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import useLanguage from '@/lib/useLanguage';
 import { tIsland } from '@/lib/i18n';
-import { api } from '@/lib/api';
+import { useJobs, useIslands } from '@/lib/queries';
 import IslandMapModal from '@/components/IslandMapModal';
 
 
@@ -31,9 +31,11 @@ function useCountUp(target, duration = 1200) {
 
 export default function Home() {
     const { t, lang } = useLanguage();
-    const [allJobs, setAllJobs] = useState([]);
-    const [islands, setIslands] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const { data: jobsData, isLoading: jobsLoading } = useJobs();
+    const { data: islandsData, isLoading: islandsLoading } = useIslands();
+    const allJobs = jobsData || [];
+    const islands = islandsData || [];
+    const loading = jobsLoading || islandsLoading;
     const [search, setSearch] = useState('');
     const [selectedIsland, setSelectedIsland] = useState(null);
     // Hold the count-up until just before the stats block finishes its fade-up (0.5s delay + 0.7s animation)
@@ -42,19 +44,6 @@ export default function Home() {
     useEffect(() => {
         const timer = setTimeout(() => setHeroDone(true), 600);
         return () => clearTimeout(timer);
-    }, []);
-
-    useEffect(() => {
-        const load = async () => {
-            try {
-                const [jobs, islands] = await Promise.all([api.getJobs(), api.islands()]);
-                setAllJobs(jobs || []);
-                setIslands(islands || []);
-            } finally {
-                setLoading(false);
-            }
-        };
-        load();
     }, []);
 
     const countsReady = heroDone && !loading;
