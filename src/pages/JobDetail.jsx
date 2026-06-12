@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MapPin, Clock, Users, Briefcase, Calendar, DollarSign, CheckCircle, Award, FileText, ExternalLink } from 'lucide-react';
+import { ArrowLeft, MapPin, Clock, Users, Briefcase, Calendar, DollarSign, CheckCircle, Award, FileText, ExternalLink, Pencil } from 'lucide-react';
 import { formatSalary } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -72,15 +72,28 @@ export default function JobDetail() {
                 <ArrowLeft className="w-4 h-4" />{t('common_back')}
             </button>
 
-            <div className="bg-card rounded-2xl border border-border/50 p-6 sm:p-8">
+            <div className="bg-card rounded-2xl border border-border/50 overflow-hidden">
+                {job.photo_url && (
+                    <div className="relative h-48 sm:h-64">
+                        <img src={job.photo_url} alt="" className="w-full h-full object-cover" />
+                        {job.hotel_logo ? (
+                            <img src={job.hotel_logo} alt="" className="absolute bottom-0 left-6 sm:left-8 translate-y-1/2 w-16 h-16 rounded-2xl object-cover border-2 border-card shadow-md" />
+                        ) : (
+                            <div className="absolute bottom-0 left-6 sm:left-8 translate-y-1/2 w-16 h-16 rounded-2xl bg-primary border-2 border-card shadow-md flex items-center justify-center">
+                                <Briefcase className="w-7 h-7 text-primary-foreground" />
+                            </div>
+                        )}
+                    </div>
+                )}
+                <div className={`p-6 sm:p-8 ${job.photo_url ? 'pt-12 sm:pt-14' : ''}`}>
                 <div className="flex items-start gap-4 mb-6">
-                    {job.hotel_logo ? (
+                    {!job.photo_url && (job.hotel_logo ? (
                         <img src={job.hotel_logo} alt="" className="w-16 h-16 rounded-2xl object-cover flex-shrink-0" />
                     ) : (
                         <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center flex-shrink-0">
                             <Briefcase className="w-7 h-7 text-primary" />
                         </div>
-                    )}
+                    ))}
                     <div className="flex-1">
                         <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground">{lang === 'el' && job.title_el ? job.title_el : job.title}</h1>
                         <Link to={`/hotels/${job.hotel_user_id}`} className="text-lg text-muted-foreground hover:text-primary transition-colors mt-1 inline-block">
@@ -118,13 +131,22 @@ export default function JobDetail() {
 
                 <div className="mt-8 pt-6 border-t border-border/50 flex items-center justify-between">
                     <span className="text-xs text-muted-foreground">{t('jobs_posted')} {moment(job.created_at).fromNow()}</span>
-                    {alreadyApplied ? (
+                    {me?.role === 'hotel' ? (
+                        job.hotel_user_id === me.id && (
+                            <Link to="/dashboard">
+                                <Button variant="outline" className="rounded-xl gap-2 px-6">
+                                    <Pencil className="w-4 h-4" />{lang === 'el' ? 'Επεξεργασία' : 'Edit'}
+                                </Button>
+                            </Link>
+                        )
+                    ) : alreadyApplied ? (
                         <Badge variant="secondary" className="gap-1 rounded-lg py-2 px-4"><CheckCircle className="w-4 h-4" />{t('apply_already')}</Badge>
                     ) : job.status === 'active' ? (
                         <Button onClick={handleApply} className="rounded-xl px-6">{isAuthenticated ? t('jobs_apply') : t('jobs_login_to_apply')}</Button>
                     ) : (
                         <Badge variant="secondary">{t('status_closed')}</Badge>
                     )}
+                </div>
                 </div>
             </div>
 

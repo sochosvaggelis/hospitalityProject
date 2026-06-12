@@ -114,6 +114,8 @@ const translations = {
         footer_links: "Quick Links",
         footer_contact: "Contact",
         footer_rights: "All rights reserved.",
+        footer_terms: "Terms of Use",
+        footer_privacy: "Privacy Policy",
 
         // Salary periods
         salary_hourly: "/hour",
@@ -256,6 +258,8 @@ const translations = {
         footer_links: "Γρήγοροι Σύνδεσμοι",
         footer_contact: "Επικοινωνία",
         footer_rights: "Με επιφύλαξη παντός δικαιώματος.",
+        footer_terms: "Όροι Χρήσης",
+        footer_privacy: "Πολιτική Απορρήτου",
 
         // Salary periods
         salary_hourly: "/ώρα",

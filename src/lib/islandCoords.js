@@ -1,0 +1,17 @@
+export const ISLAND_COORDS = {
+    Santorini:  { center: [36.41, 25.40],   zoom: 12.6 },
+    Mykonos:    { center: [37.455, 25.38],  zoom: 13, pickerZoom: 11 },
+    Crete:      { center: [35.2401, 24.9],  zoom: 9    },
+    Rhodes:     { center: [36.1892, 27.9564], zoom: 10.8 },
+    Kerkira:    { center: [39.61, 19.85],   zoom: 11, pickerZoom: 9 },
+    Zakynthos:  { center: [37.794, 20.80],  zoom: 11.6 },
+    Paros:      { center: [37.07, 25.19],   zoom: 12.2, pickerZoom: 10 },
+    Naxos:      { center: [37.052, 25.47],  zoom: 11.6 },
+    Lefkada:    { center: [38.71, 20.65],   zoom: 11.6 },
+    Milos:      { center: [36.71, 24.4389], zoom: 12.2 },
+    Skiathos:   { center: [39.172, 23.45],  zoom: 13   },
+    Hydra:      { center: [37.3464, 23.4714], zoom: 12.4 },
+    Ios:        { center: [36.722, 25.32],  zoom: 12.6 },
+    Kefalonia:  { center: [38.25, 20.5692], zoom: 11   },
+    Samos:      { center: [37.7, 26.8167],  zoom: 11   },
+};

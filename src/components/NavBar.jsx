@@ -65,16 +65,16 @@ export default function Navbar() {
     const isActive = (path) => location.pathname === path;
 
     const navLinks = [
-        { to: '/', label: t('nav_home'), icon: Waves },
-        { to: '/jobs', label: t('nav_jobs'), icon: Briefcase },
-        { to: '/dashboard', label: t('nav_dashboard'), icon: LayoutDashboard },
-        { to: '/messages', label: t('nav_messages'), icon: MessageCircle },
-        { to: '/profile', label: t('nav_profile'), icon: User },
+        { to: '/', label: 'Home', icon: Waves },
+        { to: '/jobs', label: 'Jobs', icon: Briefcase },
+        { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { to: '/messages', label: 'Messages', icon: MessageCircle },
+        { to: '/profile', label: 'Profile', icon: User },
     ];
 
     if (isAuthenticated) {
-        if (role === 'hotel') navLinks.splice(3, 0, { to: '/favorites', label: lang === 'el' ? 'Αγαπημένα' : 'Favourites', icon: Star });
-        if (role === 'admin') navLinks.push({ to: '/admin', label: t('nav_admin'), icon: Shield });
+        if (role === 'hotel') navLinks.splice(3, 0, { to: '/favorites', label: 'Favourites', icon: Star });
+        if (role === 'admin') navLinks.push({ to: '/admin', label: 'Admin', icon: Shield });
     }
 
     const handleLogout = async () => {
@@ -83,9 +83,9 @@ export default function Navbar() {
     };
 
     const notifLabel = (n) => {
-        if (n.type === 'accepted') return lang === 'el' ? 'Η αίτησή σας έγινε αποδεκτή' : 'Your application was accepted';
-        if (n.type === 'rejected') return lang === 'el' ? 'Η αίτησή σας απορρίφθηκε' : 'Your application was rejected';
-        return lang === 'el' ? `Νέα αίτηση από ${n.applicant_name}` : `New application from ${n.applicant_name}`;
+        if (n.type === 'accepted') return 'Your application was accepted';
+        if (n.type === 'rejected') return 'Your application was rejected';
+        return `New application from ${n.applicant_name}`;
     };
 
     return (
@@ -124,12 +124,10 @@ export default function Navbar() {
                                 </PopoverTrigger>
                                 <PopoverContent align="end" sideOffset={8} className="w-80 p-0 rounded-2xl shadow-xl border-border/50 overflow-hidden">
                                     <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between">
-                                        <span className="font-semibold text-sm text-foreground">
-                                            {lang === 'el' ? 'Ειδοποιήσεις' : 'Notifications'}
-                                        </span>
+                                        <span className="font-semibold text-sm text-foreground">Notifications</span>
                                         {notifications.length > 0 && (
                                             <span className="text-xs text-muted-foreground">
-                                                {notifications.length} {lang === 'el' ? 'σύνολο' : 'total'}
+                                                {notifications.length} total
                                             </span>
                                         )}
                                     </div>
@@ -137,9 +135,7 @@ export default function Navbar() {
                                         {notifications.length === 0 ? (
                                             <div className="flex flex-col items-center gap-2 py-10 text-center">
                                                 <Bell className="w-8 h-8 text-muted-foreground/30" />
-                                                <p className="text-sm text-muted-foreground">
-                                                    {lang === 'el' ? 'Δεν υπάρχουν ειδοποιήσεις' : 'No notifications yet'}
-                                                </p>
+                                                <p className="text-sm text-muted-foreground">No notifications yet</p>
                                             </div>
                                         ) : notifications.map(n => (
                                             <div key={n.id} onClick={() => handleReadNotif(n)} className={`flex items-start gap-3 px-4 py-3 transition-colors hover:bg-muted/40 cursor-pointer ${!n.read ? 'bg-primary/5' : ''}`}>
@@ -164,15 +160,15 @@ export default function Navbar() {
                                 <Button variant="ghost" size="icon" className="h-9 w-9"><Globe className="w-4 h-4" /></Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => setLanguage('en')}>{t('lang_en')} {lang === 'en' && '✓'}</DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setLanguage('el')}>{t('lang_el')} {lang === 'el' && '✓'}</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setLanguage('en')}>English {lang === 'en' && '✓'}</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setLanguage('el')}>Ελληνικά {lang === 'el' && '✓'}</DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
 
                         {isAuthenticated && role === 'hotel' && (
                             <Link to="/post-job">
                                 <Button size="sm" className="hidden sm:flex gap-1.5">
-                                    <Plus className="w-4 h-4" />{t('nav_post_job')}
+                                    <Plus className="w-4 h-4" />Post Job
                                 </Button>
                             </Link>
                         )}
@@ -180,12 +176,12 @@ export default function Navbar() {
                         {isAuthenticated ? (
                             <Button size="sm" variant="ghost" onClick={handleLogout} className="gap-1.5 text-muted-foreground">
                                 <LogOut className="w-4 h-4" />
-                                <span className="hidden sm:inline">{lang === 'el' ? 'Αποσύνδεση' : 'Logout'}</span>
+                                <span className="hidden sm:inline">Logout</span>
                             </Button>
                         ) : (
                             <Button size="sm" onClick={() => navigate('/login')} className="gap-1.5">
                                 <LogIn className="w-4 h-4" />
-                                <span className="hidden sm:inline">{t('nav_login')}</span>
+                                <span className="hidden sm:inline">Login</span>
                             </Button>
                         )}
 
@@ -208,13 +204,13 @@ export default function Navbar() {
                         {isAuthenticated && role === 'hotel' && (
                             <Link to="/post-job" onClick={() => setMobileOpen(false)}
                                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-primary">
-                                <Plus className="w-4 h-4" />{t('nav_post_job')}
+                                <Plus className="w-4 h-4" />Post Job
                             </Link>
                         )}
                         {!isAuthenticated && (
                             <button onClick={() => { setMobileOpen(false); navigate('/login'); }}
                                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-primary w-full">
-                                <LogIn className="w-4 h-4" />{t('nav_login')}
+                                <LogIn className="w-4 h-4" />Login
                             </button>
                         )}
                     </nav>

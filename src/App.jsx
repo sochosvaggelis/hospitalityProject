@@ -20,6 +20,8 @@ import HotelProfile from './pages/HotelProfile';
 import ScrollToTop from './lib/ScrollToTop';
 import ProtectedRoute from './lib/ProtectedRoute';
 import Login from './pages/Login';
+import Terms from './pages/Terms';
+import Privacy from './pages/Privacy';
 import RoleSelector from './components/RoleSelector';
 
 const AppContent = () => {
@@ -52,6 +54,8 @@ const AppContent = () => {
                 <Route path="/post-job" element={<PostJob />} />
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/hotels/:hotelId" element={<HotelProfile />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/privacy" element={<Privacy />} />
                 <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <Login />} />
                 <Route path="*" element={<PageNotFound />} />
             </Route>

@@ -1,9 +1,26 @@
 import { Router } from 'express';
+import multer from 'multer';
 import supabase from '../lib/supabase.js';
 import { authenticate } from '../middleware/auth.js';
 import { requireRole } from '../middleware/requireRole.js';
 
+
 const router = Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
+
+// Hotel: upload a job photo, returns the public URL
+router.post('/photo', authenticate, requireRole('hotel'), upload.single('photo'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file provided' });
+  if (!req.file.mimetype.startsWith('image/')) return res.status(400).json({ error: 'Only image files are allowed' });
+  const ext = req.file.originalname.split('.').pop();
+  const path = `job-photos/${req.user.id}-${Date.now()}.${ext}`;
+  const { error: uploadError } = await supabase.storage
+    .from('hospitalityBucket')
+    .upload(path, req.file.buffer, { contentType: req.file.mimetype, upsert: true });
+  if (uploadError) return res.status(500).json({ error: uploadError.message });
+  const { data: { publicUrl } } = supabase.storage.from('hospitalityBucket').getPublicUrl(path);
+  res.json({ url: publicUrl });
+});
 
 // Public: list active jobs with optional filters
 router.get('/', async (req, res) => {
@@ -37,16 +54,22 @@ router.get('/:id', async (req, res) => {
 
 // Hotel only: create job
 router.post('/', authenticate, requireRole('hotel'), async (req, res) => {
-  const { title, title_el, listing_lang, location, description, requirements, employment_type, salary_amount, salary_period, positions_available, start_date, category, benefits } = req.body;
+  const { title, title_el, listing_lang, location, description, description_el, requirements, requirements_el, employment_type, salary_amount, salary_period, positions_available, start_date, category, benefits, benefits_el, photo_url, status } = req.body;
+  const { data: hotelProfile } = await supabase.from('profiles').select('lat, lng').eq('id', req.user.id).single();
   const { data, error } = await supabase.from('jobs').insert({
     title, title_el: title_el || null, listing_lang: listing_lang || 'en', location, description, requirements, employment_type,
+    description_el: description_el || null,
+    requirements_el: requirements_el || null,
+    benefits_el: benefits_el || null,
+    photo_url: photo_url || null,
     salary_amount: salary_amount || null,
     salary_period: salary_period || null,
     positions_available, start_date, category, benefits,
-    status: 'active',
+    status: status === 'draft' ? 'draft' : 'active',
     hotel_name: req.user.hotel_name || req.user.full_name,
     hotel_user_id: req.user.id,
     hotel_logo: req.user.hotel_logo_url || req.user.avatar_url || '',
+    lat: hotelProfile?.lat || null, lng: hotelProfile?.lng || null,
   }).select().single();
   if (error) return res.status(500).json({ error: error.message });
   res.status(201).json(data);
@@ -59,13 +82,21 @@ router.put('/:id', authenticate, async (req, res) => {
   if (job.hotel_user_id !== req.user.id && req.user.role !== 'admin') {
     return res.status(403).json({ error: 'Forbidden' });
   }
-  const { title, title_el, listing_lang, location, description, requirements, employment_type, salary_amount, salary_period, positions_available, start_date, category, benefits, status } = req.body;
-  const { data, error } = await supabase.from('jobs').update({
-    title, title_el: title_el || null, listing_lang: listing_lang || 'en', location, description, requirements, employment_type,
-    salary_amount: salary_amount || null,
-    salary_period: salary_period || null,
-    positions_available, start_date, category, benefits, status,
-  }).eq('id', req.params.id).select().single();
+  // Partial update: only fields present in the body are touched, so callers
+  // (e.g. a status-only toggle) can't accidentally wipe salary or photo.
+  const ALLOWED_FIELDS = [
+    'title', 'title_el', 'listing_lang', 'location',
+    'description', 'description_el', 'requirements', 'requirements_el', 'benefits', 'benefits_el',
+    'employment_type', 'salary_amount', 'salary_period',
+    'positions_available', 'start_date', 'category', 'status', 'photo_url',
+  ];
+  const NULLABLE_FIELDS = ['title_el', 'description_el', 'requirements_el', 'benefits_el', 'salary_amount', 'salary_period', 'photo_url'];
+  const updates = {};
+  for (const key of ALLOWED_FIELDS) {
+    if (key in req.body) updates[key] = NULLABLE_FIELDS.includes(key) ? (req.body[key] || null) : req.body[key];
+  }
+  if (Object.keys(updates).length === 0) return res.status(400).json({ error: 'No fields to update' });
+  const { data, error } = await supabase.from('jobs').update(updates).eq('id', req.params.id).select().single();
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });

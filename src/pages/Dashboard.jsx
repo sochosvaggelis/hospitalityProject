@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Briefcase, FileText, CheckCircle, XCircle, Clock, Plus, ExternalLink, ChevronDown, Users, MessageCircle, AlertCircle, User, MapPin, Award, Languages, Star, LayoutDashboard, Pencil, Trash2, NotebookPen } from 'lucide-react';
+import { Briefcase, FileText, CheckCircle, XCircle, Clock, Plus, ExternalLink, ArrowLeft, Users, MessageCircle, AlertCircle, User, MapPin, Award, Languages, Star, LayoutDashboard, Pencil, Trash2, NotebookPen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -48,7 +48,7 @@ export default function Dashboard() {
     const [conversations, setConversations] = useState([]);
     const [favorites, setFavorites] = useState(new Set()); // set of applicant_emails
     const [loading, setLoading] = useState(true);
-    const [expandedJobIds, setExpandedJobIds] = useState(new Set());
+    const [selectedJobId, setSelectedJobId] = useState(null);
     const [statusFilter, setStatusFilter] = useState(null); // null | 'pending' | 'accepted' | 'active'
     const [profileModal, setProfileModal] = useState(null); // { loading, data }
     const [editModal, setEditModal] = useState(null); // { job, form, saving }
@@ -86,11 +86,8 @@ export default function Dashboard() {
     useEffect(() => {
         const expandJobId = location.state?.expandJobId;
         if (expandJobId) {
-            setExpandedJobIds(prev => new Set([...prev, expandJobId]));
+            setSelectedJobId(expandJobId);
             navigate(location.pathname, { replace: true, state: {} });
-            setTimeout(() => {
-                document.getElementById(`job-${expandJobId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 300);
         }
     }, [location.state]);
 
@@ -134,6 +131,9 @@ export default function Dashboard() {
         : statusFilter
             ? jobs.filter(j => j.status === statusFilter)
             : jobs;
+
+    const selectedJob = jobs.find(j => j.id === selectedJobId) || null;
+    const selectedJobApps = selectedJob ? applications.filter(a => a.job_id === selectedJob.id) : [];
 
     // Feature: Sorting — sort filteredJobs
     const filteredJobs = [...baseFilteredJobs].sort((a, b) => {
@@ -226,7 +226,8 @@ export default function Dashboard() {
             requirements: job.requirements || '',
             requirements_el: job.requirements_el || '',
             employment_type: job.employment_type || '',
-            salary_range: job.salary_range || '',
+            salary_amount: job.salary_amount || '',
+            salary_period: job.salary_period || 'monthly',
             positions_available: job.positions_available || 1,
             start_date: job.start_date || '',
             category: job.category || '',
@@ -249,6 +250,7 @@ export default function Dashboard() {
         await api.deleteJob(deleteConfirm);
         setJobs(prev => prev.filter(j => j.id !== deleteConfirm));
         setApplications(prev => prev.filter(a => a.job_id !== deleteConfirm));
+        if (selectedJobId === deleteConfirm) setSelectedJobId(null);
         setDeleteConfirm(null);
     };
 
@@ -263,24 +265,15 @@ export default function Dashboard() {
         navigate('/messages');
     };
 
-    // Feature: Unread badge — mark apps as seen when job is expanded
-    const handleToggleExpand = (jobId) => {
-        setExpandedJobIds(prev => {
-            const next = new Set(prev);
-            if (next.has(jobId)) {
-                next.delete(jobId);
-            } else {
-                next.add(jobId);
-                // Mark all apps for this job as seen
-                const jobAppIds = applications.filter(a => a.job_id === jobId).map(a => a.id);
-                setSeenAppIds(prevSeen => {
-                    const nextSeen = new Set(prevSeen);
-                    jobAppIds.forEach(id => nextSeen.add(id));
-                    try { localStorage.setItem('seen_app_ids', JSON.stringify([...nextSeen])); } catch {}
-                    return nextSeen;
-                });
-            }
-            return next;
+    // Feature: Unread badge — mark apps as seen when job is selected
+    const handleSelectJob = (jobId) => {
+        setSelectedJobId(jobId);
+        const jobAppIds = applications.filter(a => a.job_id === jobId).map(a => a.id);
+        setSeenAppIds(prevSeen => {
+            const nextSeen = new Set(prevSeen);
+            jobAppIds.forEach(id => nextSeen.add(id));
+            try { localStorage.setItem('seen_app_ids', JSON.stringify([...nextSeen])); } catch {}
+            return nextSeen;
         });
     };
 
@@ -323,43 +316,18 @@ export default function Dashboard() {
                     {isHotel && <Link to="/post-job"><Button className="rounded-xl gap-2"><Plus className="w-4 h-4" />{t('nav_post_job')}</Button></Link>}
                 </div>
 
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                    <StatCard icon={Briefcase} label={lang === 'el' ? 'Σύνολο Αγγελιών' : 'Total Jobs'} value={jobs.length} color="bg-primary/10 text-primary" />
-                    <StatCard icon={CheckCircle} label={t('dash_active_jobs')} value={activeJobs} color={STATUS_COLORS.active.icon} />
-                    <StatCard icon={FileText} label={t('dash_total_apps')} value={applications.length} color="bg-primary/10 text-primary" />
-                    <StatCard icon={Clock} label={t('dash_pending')} value={pendingApps} color={STATUS_COLORS.pending.icon} />
-                </div>
+                {!isHotel && (
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                        <StatCard icon={FileText} label={lang === 'el' ? 'Σύνολο Αιτήσεων' : 'Total Applications'} value={applications.length} color="bg-primary/10 text-primary" />
+                        <StatCard icon={Clock} label={lang === 'el' ? 'Σε Αναμονή' : 'Pending'} value={pendingApps} color={STATUS_COLORS.pending.icon} />
+                        <StatCard icon={CheckCircle} label={lang === 'el' ? 'Αποδεκτές' : 'Accepted'} value={acceptedApps} color={STATUS_COLORS.accepted.icon} />
+                        <StatCard icon={XCircle} label={lang === 'el' ? 'Απορρίφθηκαν' : 'Rejected'} value={applications.filter(a => a.status === 'rejected').length} color={STATUS_COLORS.rejected.icon} />
+                    </div>
+                )}
 
                 {isHotel && (
                     <div className="mb-8">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="font-display text-xl font-bold text-foreground">{t('dash_my_jobs')}</h2>
-                            <button
-                                onClick={() => {
-                                    const allExpanded = filteredJobs.every(j => expandedJobIds.has(j.id));
-                                    if (allExpanded) {
-                                        setExpandedJobIds(new Set());
-                                    } else {
-                                        const newIds = filteredJobs.map(j => j.id);
-                                        // Mark all their apps as seen
-                                        const allAppIds = applications.filter(a => newIds.includes(a.job_id)).map(a => a.id);
-                                        setSeenAppIds(prevSeen => {
-                                            const nextSeen = new Set(prevSeen);
-                                            allAppIds.forEach(id => nextSeen.add(id));
-                                            try { localStorage.setItem('seen_app_ids', JSON.stringify([...nextSeen])); } catch {}
-                                            return nextSeen;
-                                        });
-                                        setExpandedJobIds(new Set(newIds));
-                                    }
-                                }}
-                                className="flex items-center gap-1.5 text-sm text-primary hover:underline"
-                            >
-                                {filteredJobs.every(j => expandedJobIds.has(j.id))
-                                    ? (lang === 'el' ? 'Σύμπτυξη όλων' : 'Collapse all')
-                                    : (lang === 'el' ? 'Ανάπτυξη όλων' : 'Expand all')}
-                                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${filteredJobs.every(j => expandedJobIds.has(j.id)) ? 'rotate-180' : ''}`} />
-                            </button>
-                        </div>
+                        <h2 className="font-display text-xl font-bold text-foreground mb-4">{t('dash_my_jobs')}</h2>
 
                         {/* Filter pills + Sort dropdown */}
                         <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
@@ -398,81 +366,104 @@ export default function Dashboard() {
                             </select>
                         </div>
 
-                        <div className="space-y-3">
-                            {filteredJobs.length === 0 ? (
-                                <p className="text-muted-foreground text-center py-8">{emptyStateMessage()}</p>
-                            ) : filteredJobs.map(job => {
-                                const jobApps = applications.filter(a => a.job_id === job.id);
-                                const isExpanded = expandedJobIds.has(job.id);
-                                return (
-                                    <div key={job.id} id={`job-${job.id}`} className="bg-card rounded-xl border border-border/50 overflow-hidden">
-                                        {/* Job header row — click to expand */}
-                                        <div
-                                            className="w-full p-4 flex items-center justify-between gap-4 hover:bg-accent/30 transition-colors cursor-pointer group/row"
-                                            onClick={() => handleToggleExpand(job.id)}
-                                        >
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-1.5">
-                                                    <Link
-                                                        to={`/jobs/${job.id}`}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        onClick={e => e.stopPropagation()}
-                                                        className="font-medium text-foreground hover:text-primary group-hover/row:text-primary hover:underline group-hover/row:underline transition-colors inline-flex items-center gap-1 group"
-                                                    >
-                                                        {job.title}
-                                                        <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-60 group-hover/row:opacity-60 transition-opacity flex-shrink-0" />
-                                                    </Link>
-                                                </div>
-                                                <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                                                    <span>{job.location}</span>
-                                                    <span>·</span>
-                                                    <Users className="w-3 h-3" />
-                                                    <span>{jobApps.length} {lang === 'el' ? 'αιτήσεις' : 'applications'}</span>
-                                                    {jobApps.filter(a => a.status === 'pending').length > 0 && (
-                                                        <span className={`${STATUS_COLORS.pending.badge} px-1.5 py-0.5 rounded-md text-xs font-medium`}>
-                                                            {jobApps.filter(a => a.status === 'pending').length} {lang === 'el' ? 'νέες' : 'new'}
-                                                        </span>
-                                                    )}
-                                                </div>
+                        <div className="lg:grid lg:grid-cols-[320px_minmax(0,1fr)] lg:gap-4 lg:items-start">
+                            {/* Left: job list */}
+                            <div className={`space-y-2 ${selectedJobId ? 'hidden lg:block' : ''}`}>
+                                {filteredJobs.length === 0 ? (
+                                    <p className="text-muted-foreground text-center py-8">{emptyStateMessage()}</p>
+                                ) : filteredJobs.map(job => {
+                                    const jobApps = applications.filter(a => a.job_id === job.id);
+                                    const pendingCount = jobApps.filter(a => a.status === 'pending').length;
+                                    const isSelected = job.id === selectedJobId;
+                                    return (
+                                        <button key={job.id} onClick={() => handleSelectJob(job.id)}
+                                            className={`w-full text-left p-3.5 rounded-xl border transition-all ${isSelected
+                                                ? 'bg-primary/5 border-primary/40 shadow-sm'
+                                                : 'bg-card border-border/50 hover:border-border hover:bg-accent/30'}`}>
+                                            <div className="flex items-center justify-between gap-2">
+                                                <span className="font-medium text-sm text-foreground truncate">{job.title}</span>
+                                                <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-md flex-shrink-0 ${statusColors[job.status]}`}>
+                                                    {{ active: lang === 'el' ? 'Ενεργή' : 'Active', closed: lang === 'el' ? 'Κλειστή' : 'Closed', draft: lang === 'el' ? 'Πρόχειρο' : 'Draft' }[job.status] ?? job.status}
+                                                </span>
                                             </div>
-                                            <div className="flex items-center gap-2 flex-shrink-0">
-                                                <Select value={job.status} onValueChange={val => { handleJobStatus(job.id, val); }}>
-                                                    <SelectTrigger onClick={e => e.stopPropagation()} className={`h-7 text-xs font-medium rounded-xl border-0 px-2.5 w-auto gap-1.5 ${statusColors[job.status]}`}>
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent className="rounded-xl">
-                                                        <SelectItem value="active" className="rounded-lg text-xs">{lang === 'el' ? 'Ενεργή' : 'Active'}</SelectItem>
-                                                        <SelectItem value="closed" className="rounded-lg text-xs">{lang === 'el' ? 'Κλειστή' : 'Closed'}</SelectItem>
-                                                        <SelectItem value="draft" className="rounded-lg text-xs">{lang === 'el' ? 'Πρόχειρο' : 'Draft'}</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                                <button
-                                                    onClick={e => { e.stopPropagation(); handleOpenEdit(job); }}
-                                                    className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
-                                                    title={lang === 'el' ? 'Επεξεργασία' : 'Edit'}
-                                                >
-                                                    <Pencil className="w-3.5 h-3.5" />
-                                                </button>
-                                                <button
-                                                    onClick={e => { e.stopPropagation(); setDeleteConfirm(job.id); }}
-                                                    className="p-1.5 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors"
-                                                    title={lang === 'el' ? 'Διαγραφή' : 'Delete'}
-                                                >
-                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                </button>
-                                                <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                                            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                                                <span className="truncate">{job.location}</span>
+                                                <span>·</span>
+                                                <Users className="w-3 h-3 flex-shrink-0" />
+                                                <span>{jobApps.length} {lang === 'el' ? 'αιτήσεις' : 'applications'}</span>
+                                                {pendingCount > 0 && (
+                                                    <span className={`${STATUS_COLORS.pending.badge} px-1.5 py-0.5 rounded-md font-medium flex-shrink-0`}>
+                                                        {pendingCount} {lang === 'el' ? 'νέες' : 'new'}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className="mt-1 text-[11px] text-muted-foreground/70">
+                                                {lang === 'el' ? 'Δημοσιεύτηκε' : 'Posted'} {moment(job.created_at).fromNow()}
+                                            </p>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Right: selected job applications */}
+                            <div className={`${selectedJob ? '' : 'hidden lg:block'} mt-4 lg:mt-0`}>
+                                {!selectedJob ? (
+                                    filteredJobs.length > 0 && (
+                                        <div className="border border-dashed border-border rounded-xl py-24 text-center text-sm text-muted-foreground">
+                                            {lang === 'el' ? 'Επίλεξε μια αγγελία για να δεις τις αιτήσεις της' : 'Select a job to view its applications'}
+                                        </div>
+                                    )
+                                ) : (
+                                    <div className="bg-card rounded-xl border border-border/50 overflow-hidden">
+                                        <div className="p-4 border-b border-border/50">
+                                            <button onClick={() => setSelectedJobId(null)}
+                                                className="lg:hidden flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-2 transition-colors">
+                                                <ArrowLeft className="w-3.5 h-3.5" />{lang === 'el' ? 'Πίσω στις αγγελίες' : 'Back to jobs'}
+                                            </button>
+                                            <div className="flex items-center justify-between gap-3 flex-wrap">
+                                                <div className="min-w-0">
+                                                    <Link to={`/jobs/${selectedJob.id}`} target="_blank" rel="noopener noreferrer"
+                                                        className="font-semibold text-foreground hover:text-primary hover:underline inline-flex items-center gap-1.5">
+                                                        {selectedJob.title}
+                                                        <ExternalLink className="w-3.5 h-3.5 opacity-50 flex-shrink-0" />
+                                                    </Link>
+                                                    <p className="text-xs text-muted-foreground mt-0.5">{selectedJob.location} · {moment(selectedJob.created_at).fromNow()}</p>
+                                                </div>
+                                                <div className="flex items-center gap-2 flex-shrink-0">
+                                                    <Select value={selectedJob.status} onValueChange={val => handleJobStatus(selectedJob.id, val)}>
+                                                        <SelectTrigger className={`h-7 text-xs font-medium rounded-xl border-0 px-2.5 w-auto gap-1.5 ${statusColors[selectedJob.status]}`}>
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent className="rounded-xl">
+                                                            <SelectItem value="active" className="rounded-lg text-xs">{lang === 'el' ? 'Ενεργή' : 'Active'}</SelectItem>
+                                                            <SelectItem value="closed" className="rounded-lg text-xs">{lang === 'el' ? 'Κλειστή' : 'Closed'}</SelectItem>
+                                                            <SelectItem value="draft" className="rounded-lg text-xs">{lang === 'el' ? 'Πρόχειρο' : 'Draft'}</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <button
+                                                        onClick={() => handleOpenEdit(selectedJob)}
+                                                        className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                                                        title={lang === 'el' ? 'Επεξεργασία' : 'Edit'}
+                                                    >
+                                                        <Pencil className="w-3.5 h-3.5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setDeleteConfirm(selectedJob.id)}
+                                                        className="p-1.5 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors"
+                                                        title={lang === 'el' ? 'Διαγραφή' : 'Delete'}
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
 
-                                        {/* Expanded applications */}
-                                        {isExpanded && (
-                                            <div className="border-t border-border/50 divide-y divide-border/30">
-                                                {jobApps.length === 0 ? (
+                                            <div className="divide-y divide-border/30">
+                                                {selectedJobApps.length === 0 ? (
                                                     <p className="text-sm text-muted-foreground text-center py-6">
                                                         {lang === 'el' ? 'Δεν υπάρχουν αιτήσεις ακόμα' : 'No applications yet'}
                                                     </p>
-                                                ) : jobApps.map(app => {
+                                                ) : selectedJobApps.map(app => {
                                                     const isUnseen = !seenAppIds.has(app.id);
                                                     const isNoteOpen = openNoteIds.has(app.id);
                                                     const noteValue = applicantNotes[app.applicant_email] || '';
@@ -572,10 +563,9 @@ export default function Dashboard() {
                                                     );
                                                 })}
                                             </div>
-                                        )}
                                     </div>
-                                );
-                            })}
+                                )}
+                            </div>
                         </div>
                     </div>
                 )}
@@ -622,8 +612,18 @@ export default function Dashboard() {
                                 <Input className="rounded-xl" value={editModal.form.location} onChange={e => setEditModal(m => ({ ...m, form: { ...m.form, location: e.target.value } }))} />
                             </div>
                             <div>
-                                <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Μισθός' : 'Salary'}</label>
-                                <Input className="rounded-xl" value={editModal.form.salary_range} onChange={e => setEditModal(m => ({ ...m, form: { ...m.form, salary_range: e.target.value } }))} />
+                                <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Μισθός (€)' : 'Salary (€)'}</label>
+                                <div className="flex gap-2">
+                                    <Input type="number" min="0" className="rounded-xl" value={editModal.form.salary_amount} onChange={e => setEditModal(m => ({ ...m, form: { ...m.form, salary_amount: e.target.value } }))} />
+                                    <Select value={editModal.form.salary_period} onValueChange={v => setEditModal(m => ({ ...m, form: { ...m.form, salary_period: v } }))}>
+                                        <SelectTrigger className="rounded-xl w-28 flex-shrink-0"><SelectValue /></SelectTrigger>
+                                        <SelectContent className="rounded-xl">
+                                            <SelectItem value="hourly">{lang === 'el' ? '/ώρα' : '/hour'}</SelectItem>
+                                            <SelectItem value="daily">{lang === 'el' ? '/ημέρα' : '/day'}</SelectItem>
+                                            <SelectItem value="monthly">{lang === 'el' ? '/μήνα' : '/month'}</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-3">

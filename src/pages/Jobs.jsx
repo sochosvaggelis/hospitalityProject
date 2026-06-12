@@ -21,6 +21,7 @@ export default function Jobs() {
     const [categories, setCategories] = useState([]);
     const [empTypes, setEmpTypes] = useState([]);
     const [islands, setIslands] = useState([]);
+    const [islandData, setIslandData] = useState([]);
     const [catMap, setCatMap] = useState({});
     const [empMap, setEmpMap] = useState({});
 
@@ -41,6 +42,7 @@ export default function Jobs() {
             setCategories(cats?.map(c => c.key) || []);
             setEmpTypes(emps?.map(e => e.key) || []);
             setIslands(isls?.map(i => i.name) || []);
+            setIslandData(isls || []);
             setCatMap(Object.fromEntries((cats || []).map(c => [c.key, { en: c.label_en, el: c.label_el }])));
             setEmpMap(Object.fromEntries((emps || []).map(e => [e.key, { en: e.label_en, el: e.label_el }])));
         };
@@ -151,7 +153,7 @@ export default function Jobs() {
                     <p className="text-center text-muted-foreground py-16">{t('jobs_no_results')}</p>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {filteredJobs.map(job => <JobCard key={job.id} job={job} />)}
+                        {filteredJobs.map(job => <JobCard key={job.id} job={job} islands={islandData} />)}
                     </div>
                 )}
             </div>

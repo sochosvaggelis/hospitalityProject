@@ -28,13 +28,13 @@ export default function Footer() {
                     <div>
                         <h4 className="font-semibold text-white mb-4">{t('footer_links')}</h4>
                         <div className="space-y-2">
-                            <Link to="/jobs" className="block text-sm text-white/60 hover:text-white transition-colors">
+                            <Link to="/jobs" className="block text-sm text-white/60 hover:text-[#38d4f5] transition-colors">
                                 {t('nav_jobs')}
                             </Link>
-                            <Link to="/dashboard" className="block text-sm text-white/60 hover:text-white transition-colors">
+                            <Link to="/dashboard" className="block text-sm text-white/60 hover:text-[#38d4f5] transition-colors">
                                 {t('nav_dashboard')}
                             </Link>
-                            <Link to="/profile" className="block text-sm text-white/60 hover:text-white transition-colors">
+                            <Link to="/profile" className="block text-sm text-white/60 hover:text-[#38d4f5] transition-colors">
                                 {t('nav_profile')}
                             </Link>
                         </div>
@@ -44,8 +44,13 @@ export default function Footer() {
                         <p className="text-sm text-white/60">info@seasidejobs.gr</p>
                     </div>
                 </div>
-                <div className="mt-8 pt-6 border-t border-white/10 text-center text-xs text-white/40">
-                    © {new Date().getFullYear()} SeaSide Jobs. {t('footer_rights')}
+                <div className="mt-8 pt-6 border-t border-white/10 flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-6 text-center text-xs text-white/50">
+                    <span>© {new Date().getFullYear()} SeaSide Jobs. {t('footer_rights')}</span>
+                    <div className="flex items-center gap-4">
+                        <Link to="/terms" className="hover:text-[#38d4f5] transition-colors">{t('footer_terms')}</Link>
+                        <span className="text-white/20">·</span>
+                        <Link to="/privacy" className="hover:text-[#38d4f5] transition-colors">{t('footer_privacy')}</Link>
+                    </div>
                 </div>
             </div>
         </footer>

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import supabase from '../lib/supabase.js';
 import { authenticate } from '../middleware/auth.js';
+import { requireRole } from '../middleware/requireRole.js';
 
 const router = Router();
 
@@ -30,8 +31,8 @@ router.get('/check', authenticate, async (req, res) => {
   res.json({ applied: !!data });
 });
 
-// Submit application
-router.post('/', authenticate, async (req, res) => {
+// Submit application (servers only — hotels cannot apply)
+router.post('/', authenticate, requireRole('user'), async (req, res) => {
   const { job_id, cover_letter, resume_url } = req.body;
   const { data: job } = await supabase.from('jobs').select('title, hotel_name, hotel_user_id').eq('id', job_id).single();
   if (!job) return res.status(404).json({ error: 'Job not found' });

@@ -47,7 +47,7 @@ router.get('/', authenticate, async (req, res) => {
 });
 
 router.patch('/', authenticate, async (req, res) => {
-  const allowed = ['phone', 'bio', 'location', 'experience_years', 'skills', 'languages_spoken', 'hotel_name', 'hotel_description', 'hotel_website', 'hotel_stars', 'full_name'];
+  const allowed = ['phone', 'bio', 'location', 'experience_years', 'skills', 'languages_spoken', 'hotel_name', 'hotel_description', 'hotel_website', 'hotel_stars', 'full_name', 'lat', 'lng'];
   const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
   const { data, error } = await supabase.from('profiles').update(updates).eq('id', req.user.id).select().single();
   if (error) return res.status(500).json({ error: error.message });

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { Link } from 'react-router-dom';
 import L from 'leaflet';
 import useLanguage from '@/lib/useLanguage';
 import { tIsland } from '@/lib/i18n';
@@ -12,23 +13,7 @@ L.Icon.Default.mergeOptions({
 });
 
 
-const ISLAND_COORDS = {
-    Santorini:  { center: [36.41, 25.40], zoom: 12.6 },
-    Mykonos:    { center: [37.455, 25.38], zoom: 13 },
-    Crete:      { center: [35.2401, 24.9000], zoom: 9  },
-    Rhodes:     { center: [36.1892, 27.9564], zoom: 10.8 },
-    Kerkira:      { center: [39.61, 19.85], zoom: 11 },
-    Zakynthos:  { center: [37.794, 20.80], zoom: 11.6 },
-    Paros:      { center: [37.0700, 25.1900], zoom: 12.2 },
-    Naxos:      { center: [37.0520, 25.4700], zoom: 11.6 },
-    Lefkada:    { center: [38.7100, 20.6500], zoom: 11.6 },
-    Milos:      { center: [36.71, 24.4389], zoom: 12.2 },
-    Skiathos:   { center: [39.1720, 23.45], zoom: 13 },
-    Hydra:      { center: [37.3464, 23.4714], zoom: 12.4 },
-    Ios:        { center: [36.7220, 25.32], zoom: 12.6 },
-    Kefalonia:  { center: [38.25, 20.5692], zoom: 11 },
-    Samos:      { center: [37.700, 26.8167], zoom: 11 },
-};
+import { ISLAND_COORDS } from '@/lib/islandCoords';
 
 function MapView({ center, zoom }) {
     const map = useMap();
@@ -38,7 +23,15 @@ function MapView({ center, zoom }) {
     return null;
 }
 
-export default function IslandMapModal({ island, onClose }) {
+const pinIcon = L.divIcon({
+    className: '',
+    html: `<div style="width:28px;height:28px;background:#e85d2f;border:3px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 6px rgba(0,0,0,0.35);"></div>`,
+    iconSize: [28, 28],
+    iconAnchor: [14, 28],
+    popupAnchor: [0, -30],
+});
+
+export default function IslandMapModal({ island, jobs = [], onClose }) {
     const { lang } = useLanguage();
     const coords = ISLAND_COORDS[island.name] ?? { center: [37.9838, 23.7275], zoom: 7 };
     const { center, zoom } = coords;
@@ -127,6 +120,7 @@ export default function IslandMapModal({ island, onClose }) {
                         zoomDelta={0.2}
                         style={{ width: '100%', height: '100%' }}
                         zoomControl={false}
+                        attributionControl={false}
                         dragging={true}
                         scrollWheelZoom={true}
                         doubleClickZoom={true}
@@ -140,6 +134,22 @@ export default function IslandMapModal({ island, onClose }) {
                             url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png"
                         />
                         <Marker position={[center[0] + 0.04, center[1]]} icon={labelIcon} interactive={false} />
+                        {jobs.map(job => (
+                            <Marker key={job.id} position={[job.lat, job.lng]} icon={pinIcon}>
+                                <Popup>
+                                    <div style={{ minWidth: '160px', fontFamily: 'system-ui, sans-serif' }}>
+                                        <div style={{ fontWeight: 700, fontSize: '13px', marginBottom: '2px', color: '#1a1a1a' }}>
+                                            {lang === 'el' && job.title_el ? job.title_el : job.title}
+                                        </div>
+                                        <div style={{ fontSize: '12px', color: '#666', marginBottom: '6px' }}>{job.hotel_name}</div>
+                                        <Link to={`/jobs/${job.id}`} style={{ fontSize: '12px', color: '#e85d2f', fontWeight: 600, textDecoration: 'none' }}
+                                            onClick={onClose}>
+                                            {lang === 'el' ? 'Δες αγγελία →' : 'View job →'}
+                                        </Link>
+                                    </div>
+                                </Popup>
+                            </Marker>
+                        ))}
                     </MapContainer>
                 </div>
             </div>

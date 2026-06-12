@@ -3,12 +3,15 @@ import { User, Building2, MapPin, Phone, Globe, Award, Languages, Save, Camera, 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import IslandDropdown from '@/components/IslandDropdown';
 import { toast } from 'sonner';
 import useLanguage from '@/lib/useLanguage';
 import { api } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/AuthContext';
 import GuestView from '@/lib/GuestView';
+import LocationPickerMap from '@/components/LocationPickerMap';
+import { ISLAND_COORDS } from '@/lib/islandCoords';
 
 export default function Profile() {
     const { t, lang } = useLanguage();
@@ -16,6 +19,11 @@ export default function Profile() {
     const [saving, setSaving] = useState(false);
     const [form, setForm] = useState({});
     const [newEmail, setNewEmail] = useState('');
+    const [islands, setIslands] = useState([]);
+
+    useEffect(() => {
+        api.islands().then(data => setIslands((data || []).map(i => i.name)));
+    }, []);
 
     useEffect(() => {
         if (me) {
@@ -31,6 +39,8 @@ export default function Profile() {
                 hotel_description: me.hotel_description || '',
                 hotel_website: me.hotel_website || '',
                 hotel_stars: me.hotel_stars || null,
+                lat: me.lat || null,
+                lng: me.lng || null,
             });
             setNewEmail(me.email || '');
         }
@@ -235,8 +245,22 @@ export default function Profile() {
                             </div>
                         </div>
                         <div>
-                            <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-2"><MapPin className="w-3.5 h-3.5 text-muted-foreground" />{lang === 'el' ? 'Νησί / Τοποθεσία' : 'Island / Location'}</label>
-                            <Input className="rounded-xl" value={form.location || ''} onChange={e => set('location', e.target.value)} placeholder={lang === 'el' ? 'π.χ. Σαντορίνη' : 'e.g. Santorini'} />
+                            <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-2"><MapPin className="w-3.5 h-3.5 text-muted-foreground" />{lang === 'el' ? 'Νησί' : 'Island'}</label>
+                            <IslandDropdown
+                                value={form.location || ''}
+                                onValueChange={v => setForm(f => ({ ...f, location: v, lat: null, lng: null }))}
+                                islands={islands}
+                                placeholder={lang === 'el' ? 'Επίλεξε νησί' : 'Select island'}
+                            />
+                            {form.location && (
+                                <LocationPickerMap
+                                    island={form.location}
+                                    lat={form.lat}
+                                    lng={form.lng}
+                                    lang={lang}
+                                    onChange={(lat, lng) => setForm(f => ({ ...f, lat, lng }))}
+                                />
+                            )}
                         </div>
                         <div>
                             <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-2"><Building2 className="w-3.5 h-3.5 text-muted-foreground" />{t('profile_hotel_desc')}</label>

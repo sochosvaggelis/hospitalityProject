@@ -44,6 +44,11 @@ export const api = {
     getJob: (id) => get(`/api/jobs/${id}`),
     getMyJobs: () => get('/api/jobs/mine'),
     createJob: (body) => post('/api/jobs', body),
+    uploadJobPhoto: (file) => {
+        const form = new FormData();
+        form.append('photo', file);
+        return request('POST', '/api/jobs/photo', form, true);
+    },
     updateJob: (id, body) => request('PUT', `/api/jobs/${id}`, body),
     deleteJob: (id) => del(`/api/jobs/${id}`),
 
