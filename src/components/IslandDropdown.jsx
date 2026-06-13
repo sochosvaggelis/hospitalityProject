@@ -24,7 +24,7 @@ export default function IslandDropdown({ value, onValueChange, islands, placehol
                 </button>
             </PopoverTrigger>
             <PopoverContent
-                className="p-0 z-[2000]"
+                className="p-0 z-40"
                 style={{ width: 'var(--radix-popover-trigger-width)' }}
                 align="start"
                 sideOffset={4}

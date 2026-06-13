@@ -99,7 +99,7 @@ export default function Navbar() {
                         <span className="font-display font-semibold text-lg text-foreground hidden sm:block">SeaSide Jobs</span>
                     </Link>
 
-                    <nav className="hidden md:flex items-center gap-1">
+                    <nav className="hidden lg:flex items-center gap-1">
                         {navLinks.map(({ to, label, icon: Icon }) => (
                             <Link key={to} to={to}
                                 className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${isActive(to) ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}>
@@ -185,7 +185,7 @@ export default function Navbar() {
                             </Button>
                         )}
 
-                        <Button variant="ghost" size="icon" className="md:hidden h-9 w-9" onClick={() => setMobileOpen(!mobileOpen)}>
+                        <Button variant="ghost" size="icon" className="lg:hidden h-9 w-9" onClick={() => setMobileOpen(!mobileOpen)}>
                             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
                         </Button>
                     </div>
@@ -193,7 +193,7 @@ export default function Navbar() {
             </div>
 
             {mobileOpen && (
-                <div className="md:hidden border-t border-border/50 bg-card/95 backdrop-blur-xl">
+                <div className="lg:hidden border-t border-border/50 bg-card/95 backdrop-blur-xl">
                     <nav className="px-4 py-3 space-y-1">
                         {navLinks.map(({ to, label, icon: Icon }) => (
                             <Link key={to} to={to} onClick={() => setMobileOpen(false)}
@@ -207,7 +207,12 @@ export default function Navbar() {
                                 <Plus className="w-4 h-4" />Post Job
                             </Link>
                         )}
-                        {!isAuthenticated && (
+                        {isAuthenticated ? (
+                            <button onClick={() => { setMobileOpen(false); handleLogout(); }}
+                                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted w-full">
+                                <LogOut className="w-4 h-4" />Logout
+                            </button>
+                        ) : (
                             <button onClick={() => { setMobileOpen(false); navigate('/login'); }}
                                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-primary w-full">
                                 <LogIn className="w-4 h-4" />Login

@@ -208,7 +208,8 @@ export default function PostJob() {
                         </div>
                         <div>
                             <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Ημ/νία Έναρξης' : 'Start Date'}</label>
-                            <Input className="rounded-xl" value={form.start_date} onChange={e => set('start_date', e.target.value)} placeholder={lang === 'el' ? 'π.χ. Ιούνιος 2026' : 'e.g. June 2026'} />
+                            <Input type="date" min={new Date().toISOString().slice(0, 10)} className="rounded-xl" value={form.start_date} onChange={e => set('start_date', e.target.value)} />
+                            <p className="text-[11px] text-muted-foreground mt-1">{lang === 'el' ? 'Μετά την ημ/νία αυτή η αγγελία κρύβεται αυτόματα.' : 'After this date the listing is hidden automatically.'}</p>
                         </div>
                     </div>
                 </Section>

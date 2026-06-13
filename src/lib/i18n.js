@@ -1,3 +1,28 @@
+import moment from 'moment';
+
+// Define the Greek relative-time locale on *this* moment instance. Importing
+// 'moment/locale/el' separately can register on a different copy under Vite's
+// dep optimizer, so the locale would silently never apply — define it inline.
+moment.updateLocale('el', {
+    relativeTime: {
+        future: 'σε %s',
+        past: '%s πριν',
+        s: 'λίγα δευτερόλεπτα',
+        ss: '%d δευτερόλεπτα',
+        m: 'ένα λεπτό',
+        mm: '%d λεπτά',
+        h: 'μία ώρα',
+        hh: '%d ώρες',
+        d: 'μία μέρα',
+        dd: '%d μέρες',
+        M: 'έναν μήνα',
+        MM: '%d μήνες',
+        y: 'έναν χρόνο',
+        yy: '%d χρόνια',
+    },
+});
+moment.locale('en'); // updateLocale switches the active locale; reset until synced
+
 const translations = {
     en: {
         // Navigation
@@ -291,6 +316,13 @@ const translations = {
 
 let currentLang = localStorage.getItem('app_language') || 'en';
 
+// Keep moment's relative-time output ("3 days ago" / "πριν 3 ημέρες") in sync
+// with the app language. Called at init and whenever the language changes.
+function syncMomentLocale() {
+    moment.locale(currentLang === 'el' ? 'el' : 'en');
+}
+syncMomentLocale();
+
 export function t(key) {
     return translations[currentLang]?.[key] || translations.en[key] || key;
 }
@@ -298,6 +330,7 @@ export function t(key) {
 export function setLanguage(lang) {
     currentLang = lang;
     localStorage.setItem('app_language', lang);
+    syncMomentLocale();
     window.dispatchEvent(new Event('languagechange'));
 }
 

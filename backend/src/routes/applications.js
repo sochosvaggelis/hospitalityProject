@@ -2,6 +2,7 @@ import { Router } from 'express';
 import supabase from '../lib/supabase.js';
 import { authenticate } from '../middleware/auth.js';
 import { requireRole } from '../middleware/requireRole.js';
+import { sendEmail, newApplicationEmail, applicationDecisionEmail } from '../lib/mailer.js';
 
 const router = Router();
 
@@ -56,18 +57,41 @@ router.post('/', authenticate, requireRole('user'), async (req, res) => {
     .select('email')
     .eq('id', job.hotel_user_id)
     .single();
-  if (hotelProfile?.email) {
-    await supabase.from('notifications').insert({
-      user_email: hotelProfile.email,
+  // Fall back to the auth email if the profile row has no email set
+  let hotelEmail = hotelProfile?.email;
+  if (!hotelEmail) {
+    const { data: authUser } = await supabase.auth.admin.getUserById(job.hotel_user_id);
+    hotelEmail = authUser?.user?.email;
+  }
+  if (hotelEmail) {
+    const { error: notifError } = await supabase.from('notifications').insert({
+      user_email: hotelEmail,
       type: 'new_application',
       job_title: job.title,
       hotel_name: job.hotel_name,
       applicant_name: req.user.full_name,
       job_id,
     });
+    if (notifError) console.error('Failed to create new_application notification:', notifError.message);
+    sendEmail(newApplicationEmail({ hotelEmail, applicantName: req.user.full_name, jobTitle: job.title }));
+  } else {
+    console.error('No hotel email found for job', job_id, 'hotel_user_id', job.hotel_user_id);
   }
 
   res.status(201).json(data);
+});
+
+// Hotel: mark all applications for a job as seen
+router.post('/mark-seen', authenticate, requireRole('hotel'), async (req, res) => {
+  const { job_id } = req.body;
+  if (!job_id) return res.status(400).json({ error: 'job_id required' });
+  const { error } = await supabase
+    .from('applications')
+    .update({ hotel_seen: true })
+    .eq('job_id', job_id)
+    .eq('hotel_user_id', req.user.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
 });
 
 // Hotel only: update application status
@@ -92,6 +116,12 @@ router.patch('/:id/status', authenticate, async (req, res) => {
       hotel_name: app.hotel_name,
       job_id: app.job_id,
     });
+    sendEmail(applicationDecisionEmail({
+      applicantEmail: app.applicant_email,
+      status,
+      jobTitle: app.job_title,
+      hotelName: app.hotel_name,
+    }));
   }
 
   res.json(data);

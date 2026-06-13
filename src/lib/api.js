@@ -57,6 +57,11 @@ export const api = {
     checkApplied: (jobId) => get(`/api/applications/check?job_id=${jobId}`),
     apply: (body) => post('/api/applications', body), // body: { job_id, cover_letter, resume_url? }
     updateApplicationStatus: (id, status) => patch(`/api/applications/${id}/status`, { status }),
+    markAppsSeen: (job_id) => post('/api/applications/mark-seen', { job_id }),
+
+    // Applicant notes (server-side, per hotel)
+    getApplicantNotes: () => get('/api/applicant-notes'),
+    saveApplicantNote: (applicant_email, note) => request('PUT', '/api/applicant-notes', { applicant_email, note }),
 
     // Profile
     getProfile: () => get('/api/profile'),
@@ -82,6 +87,8 @@ export const api = {
     getMessages: (convId) => get(`/api/conversations/${convId}/messages`),
     sendMessage: (convId, content) => post(`/api/conversations/${convId}/messages`, { content }),
     markRead: (convId) => patch(`/api/conversations/${convId}/read`, {}),
+    toggleArchive: (convId) => patch(`/api/conversations/${convId}/archive`, {}),
+    toggleMute: (convId) => patch(`/api/conversations/${convId}/mute`, {}),
 
     // Favorites
     getFavorites: () => get('/api/favorites'),

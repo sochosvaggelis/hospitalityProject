@@ -35,7 +35,16 @@ router.get('/', async (req, res) => {
   }
   const { data, error } = await query;
   if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
+  // Hide listings whose start date has already passed. Legacy free-text dates
+  // (e.g. "June 2026") aren't parseable and are treated as no-expiry.
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const visible = (data || []).filter(j => {
+    if (!j.start_date) return true;
+    const isIsoDate = /^\d{4}-\d{2}-\d{2}$/.test(j.start_date);
+    if (!isIsoDate) return true;
+    return j.start_date >= todayStr;
+  });
+  res.json(visible);
 });
 
 // Hotel: own jobs (all statuses)

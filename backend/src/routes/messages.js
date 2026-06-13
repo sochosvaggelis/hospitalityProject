@@ -102,4 +102,34 @@ router.patch('/:id/read', authenticate, async (req, res) => {
   res.json({ ok: true });
 });
 
+// Toggle a per-user flag stored as an array of emails (archived_by / muted_by)
+async function toggleMembership(req, res, column) {
+  const email = req.user.email;
+  const { data: conv } = await supabase
+    .from('conversations')
+    .select(`participant_1, participant_2, ${column}`)
+    .eq('id', req.params.id)
+    .single();
+  if (!conv) return res.status(404).json({ error: 'Conversation not found' });
+  if (conv.participant_1 !== email && conv.participant_2 !== email) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  const current = conv[column] || [];
+  const next = current.includes(email) ? current.filter(e => e !== email) : [...current, email];
+  const { data, error } = await supabase
+    .from('conversations')
+    .update({ [column]: next })
+    .eq('id', req.params.id)
+    .select()
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+}
+
+// Archive / unarchive for the current user (archived = hidden from their list)
+router.patch('/:id/archive', authenticate, (req, res) => toggleMembership(req, res, 'archived_by'));
+
+// Mute / unmute for the current user
+router.patch('/:id/mute', authenticate, (req, res) => toggleMembership(req, res, 'muted_by'));
+
 export default router;

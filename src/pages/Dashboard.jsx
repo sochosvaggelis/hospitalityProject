@@ -57,28 +57,14 @@ export default function Dashboard() {
     // Feature: Sorting
     const [sortBy, setSortBy] = useState('newest'); // 'newest' | 'oldest' | 'most_apps'
 
-    // Feature: Unread badge — seen application IDs from localStorage
-    const [seenAppIds, setSeenAppIds] = useState(() => {
-        try {
-            const stored = localStorage.getItem('seen_app_ids');
-            return stored ? new Set(JSON.parse(stored)) : new Set();
-        } catch {
-            return new Set();
-        }
-    });
-
-    // Feature: Applicant notes — { email: note } from localStorage
-    const [applicantNotes, setApplicantNotes] = useState(() => {
-        try {
-            const stored = localStorage.getItem('applicant_notes');
-            return stored ? JSON.parse(stored) : {};
-        } catch {
-            return {};
-        }
-    });
+    // Feature: Applicant notes — { email: note } loaded from the server
+    const [applicantNotes, setApplicantNotes] = useState({});
 
     // Feature: Note textarea open state per app id
     const [openNoteIds, setOpenNoteIds] = useState(new Set());
+
+    // Feature: search applicants within the selected job
+    const [applicantSearch, setApplicantSearch] = useState('');
 
     // Accept confirmation dialog
     const [acceptConfirm, setAcceptConfirm] = useState(null); // appId | null
@@ -95,16 +81,18 @@ export default function Dashboard() {
         if (!me) return;
         const load = async () => {
             if (me.role === 'hotel') {
-                const [myJobs, allApps, convs, favs] = await Promise.all([
+                const [myJobs, allApps, convs, favs, notes] = await Promise.all([
                     api.getMyJobs(),
                     api.getApplications(),
                     api.getConversations(),
                     api.getFavorites(),
+                    api.getApplicantNotes().catch(() => ({})),
                 ]);
                 setJobs(myJobs || []);
                 setApplications(allApps || []);
                 setConversations(convs || []);
                 setFavorites(new Set((favs || []).map(f => f.applicant_email)));
+                setApplicantNotes(notes || {});
             } else {
                 const myApps = await api.getApplications();
                 setApplications(myApps || []);
@@ -133,7 +121,13 @@ export default function Dashboard() {
             : jobs;
 
     const selectedJob = jobs.find(j => j.id === selectedJobId) || null;
-    const selectedJobApps = selectedJob ? applications.filter(a => a.job_id === selectedJob.id) : [];
+    const allSelectedJobApps = selectedJob ? applications.filter(a => a.job_id === selectedJob.id) : [];
+    const searchLower = applicantSearch.trim().toLowerCase();
+    const selectedJobApps = searchLower
+        ? allSelectedJobApps.filter(a =>
+            (a.applicant_name || '').toLowerCase().includes(searchLower) ||
+            (a.applicant_email || '').toLowerCase().includes(searchLower))
+        : allSelectedJobApps;
 
     // Feature: Sorting — sort filteredJobs
     const filteredJobs = [...baseFilteredJobs].sort((a, b) => {
@@ -265,25 +259,24 @@ export default function Dashboard() {
         navigate('/messages');
     };
 
-    // Feature: Unread badge — mark apps as seen when job is selected
+    // Feature: Unread badge — mark apps as seen (server-side) when job is selected
     const handleSelectJob = (jobId) => {
         setSelectedJobId(jobId);
-        const jobAppIds = applications.filter(a => a.job_id === jobId).map(a => a.id);
-        setSeenAppIds(prevSeen => {
-            const nextSeen = new Set(prevSeen);
-            jobAppIds.forEach(id => nextSeen.add(id));
-            try { localStorage.setItem('seen_app_ids', JSON.stringify([...nextSeen])); } catch {}
-            return nextSeen;
-        });
+        setApplicantSearch('');
+        const hasUnseen = applications.some(a => a.job_id === jobId && !a.hotel_seen);
+        if (hasUnseen) {
+            api.markAppsSeen(jobId).catch(() => {});
+            setApplications(prev => prev.map(a => a.job_id === jobId ? { ...a, hotel_seen: true } : a));
+        }
     };
 
-    // Feature: Applicant notes — save note on change
+    // Feature: Applicant notes — update locally, persist on blur
     const handleNoteChange = (email, value) => {
-        setApplicantNotes(prev => {
-            const next = { ...prev, [email]: value };
-            try { localStorage.setItem('applicant_notes', JSON.stringify(next)); } catch {}
-            return next;
-        });
+        setApplicantNotes(prev => ({ ...prev, [email]: value }));
+    };
+
+    const handleNoteBlur = (email) => {
+        api.saveApplicantNote(email, applicantNotes[email] || '').catch(() => {});
     };
 
     const handleToggleNote = (appId) => {
@@ -430,6 +423,12 @@ export default function Dashboard() {
                                                     <p className="text-xs text-muted-foreground mt-0.5">{selectedJob.location} · {moment(selectedJob.created_at).fromNow()}</p>
                                                 </div>
                                                 <div className="flex items-center gap-2 flex-shrink-0">
+                                                    {selectedJob.status === 'draft' && (
+                                                        <Button size="sm" onClick={() => handleJobStatus(selectedJob.id, 'active')}
+                                                            className="h-7 rounded-xl text-xs px-3 gap-1.5">
+                                                            <CheckCircle className="w-3.5 h-3.5" />{lang === 'el' ? 'Δημοσίευση' : 'Publish'}
+                                                        </Button>
+                                                    )}
                                                     <Select value={selectedJob.status} onValueChange={val => handleJobStatus(selectedJob.id, val)}>
                                                         <SelectTrigger className={`h-7 text-xs font-medium rounded-xl border-0 px-2.5 w-auto gap-1.5 ${statusColors[selectedJob.status]}`}>
                                                             <SelectValue />
@@ -458,13 +457,27 @@ export default function Dashboard() {
                                             </div>
                                         </div>
 
+                                            {allSelectedJobApps.length > 3 && (
+                                                <div className="px-4 pt-3">
+                                                    <Input
+                                                        value={applicantSearch}
+                                                        onChange={e => setApplicantSearch(e.target.value)}
+                                                        placeholder={lang === 'el' ? 'Αναζήτηση υποψηφίου (όνομα ή email)…' : 'Search applicants (name or email)…'}
+                                                        className="rounded-xl h-9 text-sm"
+                                                    />
+                                                </div>
+                                            )}
                                             <div className="divide-y divide-border/30">
-                                                {selectedJobApps.length === 0 ? (
+                                                {allSelectedJobApps.length === 0 ? (
                                                     <p className="text-sm text-muted-foreground text-center py-6">
                                                         {lang === 'el' ? 'Δεν υπάρχουν αιτήσεις ακόμα' : 'No applications yet'}
                                                     </p>
+                                                ) : selectedJobApps.length === 0 ? (
+                                                    <p className="text-sm text-muted-foreground text-center py-6">
+                                                        {lang === 'el' ? 'Κανένας υποψήφιος δεν ταιριάζει' : 'No matching applicants'}
+                                                    </p>
                                                 ) : selectedJobApps.map(app => {
-                                                    const isUnseen = !seenAppIds.has(app.id);
+                                                    const isUnseen = !app.hotel_seen;
                                                     const isNoteOpen = openNoteIds.has(app.id);
                                                     const noteValue = applicantNotes[app.applicant_email] || '';
                                                     return (
@@ -524,6 +537,7 @@ export default function Dashboard() {
                                                                                     placeholder={lang === 'el' ? 'Ιδιωτικές σημειώσεις για αυτόν τον υποψήφιο…' : 'Private notes about this applicant…'}
                                                                                     value={noteValue}
                                                                                     onChange={e => handleNoteChange(app.applicant_email, e.target.value)}
+                                                                                    onBlur={() => handleNoteBlur(app.applicant_email)}
                                                                                 />
                                                                             </div>
                                                                         )}
@@ -633,7 +647,7 @@ export default function Dashboard() {
                             </div>
                             <div>
                                 <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Ημ/νία Έναρξης' : 'Start Date'}</label>
-                                <Input className="rounded-xl" value={editModal.form.start_date} onChange={e => setEditModal(m => ({ ...m, form: { ...m.form, start_date: e.target.value } }))} />
+                                <Input type="date" className="rounded-xl" value={/^\d{4}-\d{2}-\d{2}$/.test(editModal.form.start_date) ? editModal.form.start_date : ''} onChange={e => setEditModal(m => ({ ...m, form: { ...m.form, start_date: e.target.value } }))} />
                             </div>
                         </div>
                         <div>

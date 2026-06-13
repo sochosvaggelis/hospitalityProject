@@ -18,7 +18,7 @@ router.get('/hotel/:userId', async (req, res) => {
       .single(),
     supabase
       .from('jobs')
-      .select('id, title, location, employment_type, salary_range, positions_available, start_date, category, created_at')
+      .select('id, title, title_el, location, employment_type, salary_amount, salary_period, positions_available, start_date, category, created_at')
       .eq('hotel_user_id', userId)
       .eq('status', 'active')
       .order('created_at', { ascending: false }),
@@ -91,6 +91,10 @@ router.post('/avatar', authenticate, upload.single('avatar'), async (req, res) =
   const { data: { publicUrl } } = supabase.storage.from('hospitalityBucket').getPublicUrl(path);
   const { data, error } = await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', req.user.id).select().single();
   if (error) return res.status(500).json({ error: error.message });
+
+  // Keep hotel_logo in sync on existing job posts
+  await supabase.from('jobs').update({ hotel_logo: publicUrl }).eq('hotel_user_id', req.user.id);
+
   res.json(data);
 });
 

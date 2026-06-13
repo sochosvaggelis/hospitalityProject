@@ -4,6 +4,7 @@ import { Building2, MapPin, Globe, Star, ArrowLeft, Briefcase, Clock, DollarSign
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import useLanguage from '@/lib/useLanguage';
+import { formatSalary } from '@/lib/i18n';
 import { api } from '@/lib/api';
 import moment from 'moment';
 
@@ -133,9 +134,9 @@ export default function HotelProfile() {
                                                         <Clock className="w-3 h-3" />{job.employment_type}
                                                     </span>
                                                 )}
-                                                {job.salary_range && (
+                                                {job.salary_amount && (
                                                     <span className="flex items-center gap-1 text-xs text-primary font-medium">
-                                                        <DollarSign className="w-3 h-3" />{job.salary_range}
+                                                        <DollarSign className="w-3 h-3" />{formatSalary(job.salary_amount, job.salary_period, lang)}
                                                     </span>
                                                 )}
                                                 {job.positions_available && (

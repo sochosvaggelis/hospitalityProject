@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Send, ArrowLeft, MessageCircle } from 'lucide-react';
+import { Send, ArrowLeft, MessageCircle, MoreVertical, Archive, ArchiveRestore, Bell, BellOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import useLanguage from '@/lib/useLanguage';
@@ -10,7 +10,7 @@ import GuestView from '@/lib/GuestView';
 import moment from 'moment';
 
 export default function Messages() {
-    const { t } = useLanguage();
+    const { t, lang } = useLanguage();
     const { me, isLoading: authLoading } = useAuth();
     const [conversations, setConversations] = useState([]);
     const [activeConv, setActiveConv] = useState(null);
@@ -18,6 +18,8 @@ export default function Messages() {
     const [newMsg, setNewMsg] = useState('');
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
+    const [showArchived, setShowArchived] = useState(false);
+    const [menuOpenId, setMenuOpenId] = useState(null);
     const messagesBoxRef = useRef(null);
 
     useEffect(() => {
@@ -113,6 +115,26 @@ export default function Messages() {
     };
 
     const getOtherName = conv => conv.participant_1 === me?.email ? conv.participant_2_name : conv.participant_1_name;
+    const isArchived = conv => (conv.archived_by || []).includes(me?.email);
+    const isMuted = conv => (conv.muted_by || []).includes(me?.email);
+
+    const visibleConvs = conversations.filter(c => showArchived ? isArchived(c) : !isArchived(c));
+    const archivedCount = conversations.filter(isArchived).length;
+
+    const handleArchive = async (conv, e) => {
+        e.stopPropagation();
+        setMenuOpenId(null);
+        const updated = await api.toggleArchive(conv.id);
+        setConversations(prev => prev.map(c => c.id === conv.id ? { ...c, ...updated } : c));
+        if (activeConv?.id === conv.id) setActiveConv(null);
+    };
+
+    const handleMute = async (conv, e) => {
+        e.stopPropagation();
+        setMenuOpenId(null);
+        const updated = await api.toggleMute(conv.id);
+        setConversations(prev => prev.map(c => c.id === conv.id ? { ...c, ...updated } : c));
+    };
 
     if (authLoading) return <div className="flex justify-center py-32"><div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" /></div>;
     if (!me) return <GuestView icon={MessageCircle} titleEl="Τα Μηνύματά σας" titleEn="Your Messages" descEl="Συνδεθείτε για να δείτε και να στείλετε μηνύματα." descEn="Sign in to view and send messages." />;
@@ -126,24 +148,66 @@ export default function Messages() {
                 <div className="bg-card rounded-2xl border border-border/50 overflow-hidden" style={{ height: 'calc(100vh - 240px)', minHeight: '400px' }}>
                     <div className="flex h-full">
                         <div className={`w-full sm:w-80 border-r border-border/50 flex flex-col ${activeConv ? 'hidden sm:flex' : 'flex'}`}>
-                            <div className="p-4 border-b border-border/50"><h2 className="font-semibold text-foreground">{t('chat_title')}</h2></div>
+                            <div className="p-4 border-b border-border/50 flex items-center justify-between">
+                                <h2 className="font-semibold text-foreground">{showArchived ? (lang === 'el' ? 'Αρχειοθετημένα' : 'Archived') : t('chat_title')}</h2>
+                                {(archivedCount > 0 || showArchived) && (
+                                    <button onClick={() => { setShowArchived(s => !s); setActiveConv(null); }}
+                                        className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
+                                        {showArchived
+                                            ? (lang === 'el' ? '← Εισερχόμενα' : '← Inbox')
+                                            : <><Archive className="w-3.5 h-3.5" />{lang === 'el' ? `Αρχείο (${archivedCount})` : `Archived (${archivedCount})`}</>}
+                                    </button>
+                                )}
+                            </div>
                             <div className="flex-1 overflow-y-auto">
-                                {conversations.length === 0 ? (
+                                {visibleConvs.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center h-full text-center p-6">
                                         <MessageCircle className="w-10 h-10 text-muted-foreground/30 mb-3" />
-                                        <p className="text-sm text-muted-foreground">{t('chat_no_conversations')}</p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {showArchived ? (lang === 'el' ? 'Κανένα αρχειοθετημένο' : 'No archived conversations') : t('chat_no_conversations')}
+                                        </p>
                                     </div>
-                                ) : conversations.map(conv => (
-                                    <button key={conv.id} onClick={() => setActiveConv(conv)}
-                                        className={`w-full text-left p-4 border-b border-border/30 hover:bg-muted/50 transition-colors ${activeConv?.id === conv.id ? 'bg-primary/5' : ''}`}>
-                                        <div className="flex items-center justify-between">
-                                            <span className="font-medium text-foreground text-sm truncate">{getOtherName(conv)}</span>
-                                            {conv.unread_by === me?.email && <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />}
+                                ) : visibleConvs.map(conv => {
+                                    const muted = isMuted(conv);
+                                    const archived = isArchived(conv);
+                                    return (
+                                    <div key={conv.id} onClick={() => setActiveConv(conv)}
+                                        className={`relative w-full text-left p-4 border-b border-border/30 hover:bg-muted/50 transition-colors cursor-pointer ${activeConv?.id === conv.id ? 'bg-primary/5' : ''}`}>
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span className="font-medium text-foreground text-sm truncate flex items-center gap-1.5">
+                                                {getOtherName(conv)}
+                                                {muted && <BellOff className="w-3 h-3 text-muted-foreground flex-shrink-0" />}
+                                            </span>
+                                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                                                {conv.unread_by === me?.email && !muted && <span className="w-2 h-2 rounded-full bg-primary" />}
+                                                <button onClick={e => { e.stopPropagation(); setMenuOpenId(menuOpenId === conv.id ? null : conv.id); }}
+                                                    className="p-1 -mr-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground">
+                                                    <MoreVertical className="w-4 h-4" />
+                                                </button>
+                                            </div>
                                         </div>
                                         {conv.job_title && <p className="text-xs text-primary mt-0.5 truncate">{conv.job_title}</p>}
                                         {conv.last_message && <p className="text-xs text-muted-foreground mt-1 truncate">{conv.last_message}</p>}
-                                    </button>
-                                ))}
+                                        {menuOpenId === conv.id && (
+                                            <>
+                                                <div className="fixed inset-0 z-10" onClick={e => { e.stopPropagation(); setMenuOpenId(null); }} />
+                                                <div className="absolute right-3 top-10 z-20 w-44 bg-card border border-border/60 rounded-xl shadow-lg overflow-hidden py-1">
+                                                    <button onClick={e => handleMute(conv, e)}
+                                                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted text-left">
+                                                        {muted ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+                                                        {muted ? (lang === 'el' ? 'Κατάργηση σίγασης' : 'Unmute') : (lang === 'el' ? 'Σίγαση' : 'Mute')}
+                                                    </button>
+                                                    <button onClick={e => handleArchive(conv, e)}
+                                                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-muted text-left">
+                                                        {archived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
+                                                        {archived ? (lang === 'el' ? 'Επαναφορά' : 'Unarchive') : (lang === 'el' ? 'Αρχειοθέτηση' : 'Archive')}
+                                                    </button>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                    );
+                                })}
                             </div>
                         </div>
 

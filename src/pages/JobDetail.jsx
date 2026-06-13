@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, MapPin, Clock, Users, Briefcase, Calendar, DollarSign, CheckCircle, Award, FileText, ExternalLink, Pencil } from 'lucide-react';
 import { formatSalary } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,8 @@ import moment from 'moment';
 export default function JobDetail() {
     const { jobId } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
+    const goBack = () => (window.history.length > 1 && location.key !== 'default') ? navigate(-1) : navigate('/dashboard');
     const { t, lang } = useLanguage();
     const { isAuthenticated, me } = useAuth();
     const [job, setJob] = useState(null);
@@ -66,7 +68,7 @@ export default function JobDetail() {
 
     return (
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
-            <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+            <button onClick={goBack} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
                 <ArrowLeft className="w-4 h-4" />{t('common_back')}
             </button>
 

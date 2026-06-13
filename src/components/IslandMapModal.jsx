@@ -23,13 +23,21 @@ function MapView({ center, zoom }) {
     return null;
 }
 
-const pinIcon = L.divIcon({
-    className: '',
-    html: `<div style="width:28px;height:28px;background:#e85d2f;border:3px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 6px rgba(0,0,0,0.35);"></div>`,
-    iconSize: [28, 28],
-    iconAnchor: [14, 28],
-    popupAnchor: [0, -30],
-});
+function makePinIcon(count) {
+    const size = count > 1 ? 36 : 28;
+    const inner = count > 1
+        ? `<div style="width:${size}px;height:${size}px;background:#e85d2f;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;">
+               <span style="color:#fff;font-size:13px;font-weight:800;line-height:1;">${count}</span>
+           </div>`
+        : `<div style="width:28px;height:28px;background:#e85d2f;border:3px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 6px rgba(0,0,0,0.35);"></div>`;
+    return L.divIcon({
+        className: '',
+        html: inner,
+        iconSize: [size, size],
+        iconAnchor: [size / 2, count > 1 ? size / 2 : 28],
+        popupAnchor: [0, count > 1 ? -size / 2 - 4 : -30],
+    });
+}
 
 export default function IslandMapModal({ island, jobs = [], onClose }) {
     const { lang } = useLanguage();
@@ -80,7 +88,7 @@ export default function IslandMapModal({ island, jobs = [], onClose }) {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center sm:p-4">
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-modal-backdrop" />
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-modal-backdrop" onClick={onClose} />
             <div
                 className="relative z-10 w-full max-w-6xl mx-0 sm:mx-4 rounded-none sm:rounded-2xl overflow-hidden shadow-2xl flex flex-col animate-modal-card"
                 style={{ height: '100dvh', maxHeight: '100dvh' }}
@@ -134,18 +142,31 @@ export default function IslandMapModal({ island, jobs = [], onClose }) {
                             url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png"
                         />
                         <Marker position={[center[0] + 0.04, center[1]]} icon={labelIcon} interactive={false} />
-                        {jobs.map(job => (
-                            <Marker key={job.id} position={[job.lat, job.lng]} icon={pinIcon}>
-                                <Popup>
-                                    <div style={{ minWidth: '160px', fontFamily: 'system-ui, sans-serif' }}>
-                                        <div style={{ fontWeight: 700, fontSize: '13px', marginBottom: '2px', color: '#1a1a1a' }}>
-                                            {lang === 'el' && job.title_el ? job.title_el : job.title}
+                        {Object.values(
+                            jobs.reduce((acc, job) => {
+                                const key = `${job.hotel_user_id || job.hotel_name}`;
+                                if (!acc[key]) acc[key] = { lat: job.lat, lng: job.lng, hotel_name: job.hotel_name, jobs: [] };
+                                acc[key].jobs.push(job);
+                                return acc;
+                            }, {})
+                        ).map((group) => (
+                            <Marker key={group.hotel_name} position={[group.lat, group.lng]} icon={makePinIcon(group.jobs.length)}>
+                                <Popup maxWidth={220}>
+                                    <div style={{ fontFamily: 'system-ui, sans-serif', minWidth: '180px' }}>
+                                        <div style={{ fontWeight: 700, fontSize: '13px', color: '#1a1a1a', marginBottom: '8px', borderBottom: '1px solid #eee', paddingBottom: '6px' }}>
+                                            {group.hotel_name}
                                         </div>
-                                        <div style={{ fontSize: '12px', color: '#666', marginBottom: '6px' }}>{job.hotel_name}</div>
-                                        <Link to={`/jobs/${job.id}`} style={{ fontSize: '12px', color: '#e85d2f', fontWeight: 600, textDecoration: 'none' }}
-                                            onClick={onClose}>
-                                            {lang === 'el' ? 'Δες αγγελία →' : 'View job →'}
-                                        </Link>
+                                        {group.jobs.map(job => (
+                                            <div key={job.id} style={{ marginBottom: '6px' }}>
+                                                <div style={{ fontSize: '12px', color: '#333', marginBottom: '2px' }}>
+                                                    {lang === 'el' && job.title_el ? job.title_el : job.title}
+                                                </div>
+                                                <Link to={`/jobs/${job.id}`} style={{ fontSize: '11px', color: '#e85d2f', fontWeight: 600, textDecoration: 'none' }}
+                                                    onClick={onClose}>
+                                                    {lang === 'el' ? 'Δες αγγελία →' : 'View job →'}
+                                                </Link>
+                                            </div>
+                                        ))}
                                     </div>
                                 </Popup>
                             </Marker>
