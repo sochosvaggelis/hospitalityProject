@@ -73,7 +73,9 @@ router.post('/resume', authenticate, upload.single('resume'), async (req, res) =
     .upload(path, req.file.buffer, { contentType: 'application/pdf', upsert: true });
   if (uploadError) return res.status(500).json({ error: uploadError.message });
   const { data: { publicUrl } } = supabase.storage.from('hospitalityBucket').getPublicUrl(path);
-  const { data, error } = await supabase.from('profiles').update({ resume_url: publicUrl }).eq('id', req.user.id).select().single();
+  // Bust browser/CDN cache: the storage path is reused, so vary the URL each upload
+  const versionedUrl = `${publicUrl}?v=${Date.now()}`;
+  const { data, error } = await supabase.from('profiles').update({ resume_url: versionedUrl }).eq('id', req.user.id).select().single();
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
@@ -89,12 +91,36 @@ router.post('/avatar', authenticate, upload.single('avatar'), async (req, res) =
   if (uploadError) return res.status(500).json({ error: uploadError.message });
 
   const { data: { publicUrl } } = supabase.storage.from('hospitalityBucket').getPublicUrl(path);
-  const { data, error } = await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', req.user.id).select().single();
+  // Bust browser/CDN cache: the storage path is reused, so vary the URL each upload
+  const versionedUrl = `${publicUrl}?v=${Date.now()}`;
+  const { data, error } = await supabase.from('profiles').update({ avatar_url: versionedUrl }).eq('id', req.user.id).select().single();
   if (error) return res.status(500).json({ error: error.message });
 
   // Keep hotel_logo in sync on existing job posts
-  await supabase.from('jobs').update({ hotel_logo: publicUrl }).eq('hotel_user_id', req.user.id);
+  await supabase.from('jobs').update({ hotel_logo: versionedUrl }).eq('hotel_user_id', req.user.id);
 
+  res.json(data);
+});
+
+// Remove avatar
+router.delete('/avatar', authenticate, async (req, res) => {
+  // Best-effort delete of the stored file(s) for this user (extension varies)
+  const { data: files } = await supabase.storage.from('hospitalityBucket').list('avatars', { search: req.user.id });
+  if (files?.length) {
+    await supabase.storage.from('hospitalityBucket').remove(files.map(f => `avatars/${f.name}`));
+  }
+  const { data, error } = await supabase.from('profiles').update({ avatar_url: null }).eq('id', req.user.id).select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  // Clear the logo on this hotel's job posts so they don't show a broken image
+  await supabase.from('jobs').update({ hotel_logo: '' }).eq('hotel_user_id', req.user.id);
+  res.json(data);
+});
+
+// Remove resume
+router.delete('/resume', authenticate, async (req, res) => {
+  await supabase.storage.from('hospitalityBucket').remove([`resumes/${req.user.id}.pdf`]);
+  const { data, error } = await supabase.from('profiles').update({ resume_url: null }).eq('id', req.user.id).select().single();
+  if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
 

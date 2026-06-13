@@ -80,6 +80,8 @@ export const api = {
         form.append('resume', file);
         return request('POST', '/api/profile/resume', form, true);
     },
+    deleteAvatar: () => del('/api/profile/avatar'),
+    deleteResume: () => del('/api/profile/resume'),
 
     // Conversations & Messages
     getConversations: () => get('/api/conversations'),

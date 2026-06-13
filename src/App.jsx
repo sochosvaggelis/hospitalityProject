@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as HotToaster } from 'react-hot-toast';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClientInstance } from '@/lib/query-client';
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import Layout from './components/Layout';
@@ -20,12 +20,20 @@ import HotelProfile from './pages/HotelProfile';
 import ScrollToTop from './lib/ScrollToTop';
 import ProtectedRoute from './lib/ProtectedRoute';
 import Login from './pages/Login';
+import ResetPassword from './pages/ResetPassword';
 import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
 import RoleSelector from './components/RoleSelector';
 
 const AppContent = () => {
     const { isLoading, isAuthenticated, me, refreshProfile } = useAuth();
+    const location = useLocation();
+
+    // Reset-password is a standalone screen (no navbar, no auth/role gates). The page
+    // itself switches to the recovery user's session from the link tokens.
+    if (location.pathname === '/reset-password') {
+        return <ResetPassword />;
+    }
 
     if (isLoading) {
         return (

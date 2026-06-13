@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User, Building2, MapPin, Phone, Globe, Award, Languages, Save, Camera, Mail, FileText, Upload, ExternalLink, Star } from 'lucide-react';
+import { User, Building2, MapPin, Phone, Globe, Award, Languages, Save, Camera, Mail, FileText, Upload, ExternalLink, Star, Trash2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -20,6 +20,8 @@ export default function Profile() {
     const [form, setForm] = useState({});
     const [newEmail, setNewEmail] = useState('');
     const [islands, setIslands] = useState([]);
+    const [avatarBusy, setAvatarBusy] = useState(false);
+    const [resumeBusy, setResumeBusy] = useState(false);
 
     useEffect(() => {
         api.islands().then(data => setIslands((data || []).map(i => i.name)));
@@ -72,26 +74,67 @@ export default function Profile() {
     };
 
     const handleAvatarUpload = async (e) => {
-        const file = e.target.files?.[0];
+        const input = e.target;
+        const file = input.files?.[0];
         if (!file) return;
-        await api.uploadAvatar(file);
-        await refreshProfile();
-        toast.success(lang === 'el' ? 'Η φωτογραφία ενημερώθηκε!' : 'Photo updated!');
+        setAvatarBusy(true);
+        try {
+            await api.uploadAvatar(file);
+            await refreshProfile();
+            toast.success(lang === 'el' ? 'Η φωτογραφία ενημερώθηκε!' : 'Photo updated!');
+        } catch (e) {
+            toast.error(e.message);
+        } finally {
+            setAvatarBusy(false);
+            input.value = ''; // allow re-selecting the same file
+        }
     };
 
     const handleResumeUpload = async (e) => {
-        const file = e.target.files?.[0];
+        const input = e.target;
+        const file = input.files?.[0];
         if (!file) return;
         if (file.type !== 'application/pdf') {
             toast.error(lang === 'el' ? 'Μόνο αρχεία PDF επιτρέπονται' : 'Only PDF files are allowed');
+            input.value = '';
             return;
         }
+        setResumeBusy(true);
         try {
             await api.uploadResume(file);
             await refreshProfile();
             toast.success(lang === 'el' ? 'Το βιογραφικό ανέβηκε!' : 'Resume uploaded!');
         } catch (e) {
             toast.error(e.message);
+        } finally {
+            setResumeBusy(false);
+            input.value = ''; // allow re-selecting the same file
+        }
+    };
+
+    const handleRemoveAvatar = async () => {
+        setAvatarBusy(true);
+        try {
+            await api.deleteAvatar();
+            await refreshProfile();
+            toast.success(lang === 'el' ? 'Η φωτογραφία αφαιρέθηκε' : 'Photo removed');
+        } catch (e) {
+            toast.error(e.message);
+        } finally {
+            setAvatarBusy(false);
+        }
+    };
+
+    const handleRemoveResume = async () => {
+        setResumeBusy(true);
+        try {
+            await api.deleteResume();
+            await refreshProfile();
+            toast.success(lang === 'el' ? 'Το βιογραφικό αφαιρέθηκε' : 'Resume removed');
+        } catch (e) {
+            toast.error(e.message);
+        } finally {
+            setResumeBusy(false);
         }
     };
 
@@ -115,14 +158,26 @@ export default function Profile() {
                                 {isHotel ? <Building2 className="w-8 h-8 text-primary" /> : <User className="w-8 h-8 text-primary" />}
                             </div>
                         )}
-                        <label className="absolute inset-0 rounded-2xl bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
+                        <label className={`absolute inset-0 rounded-2xl bg-black/40 flex items-center justify-center transition-opacity ${avatarBusy ? 'pointer-events-none opacity-0' : 'opacity-0 group-hover:opacity-100 cursor-pointer'}`}>
                             <Camera className="w-5 h-5 text-white" />
-                            <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+                            <input type="file" accept="image/*" className="hidden" disabled={avatarBusy} onChange={handleAvatarUpload} />
                         </label>
+                        {avatarBusy && (
+                            <div className="absolute inset-0 rounded-2xl bg-black/50 flex items-center justify-center">
+                                <Loader2 className="w-6 h-6 text-white animate-spin" />
+                            </div>
+                        )}
                     </div>
                     <div>
                         <p className="text-sm text-muted-foreground">{lang === 'el' ? 'Πατήστε στη φωτογραφία για αλλαγή' : 'Click photo to change'}</p>
                         <span className="inline-block mt-1 text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium capitalize">{me.role}</span>
+                        {me.avatar_url && (
+                            <button onClick={handleRemoveAvatar} disabled={avatarBusy}
+                                className="mt-2 flex items-center gap-1 text-xs text-muted-foreground hover:text-red-500 transition-colors disabled:opacity-50">
+                                {avatarBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                                {lang === 'el' ? 'Αφαίρεση φωτογραφίας' : 'Remove photo'}
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -205,15 +260,22 @@ export default function Profile() {
                                 ) : (
                                     <span className="text-sm text-muted-foreground">{lang === 'el' ? 'Δεν έχετε ανεβάσει CV' : 'No resume uploaded'}</span>
                                 )}
-                                <label className="cursor-pointer">
+                                <label className={`${resumeBusy ? 'pointer-events-none opacity-50' : 'cursor-pointer'}`}>
                                     <span className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-border hover:bg-accent transition-colors">
-                                        <Upload className="w-3.5 h-3.5" />
+                                        {resumeBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
                                         {me.resume_url
                                             ? (lang === 'el' ? 'Αντικατάσταση' : 'Replace')
                                             : (lang === 'el' ? 'Ανέβασμα PDF' : 'Upload PDF')}
                                     </span>
-                                    <input type="file" accept="application/pdf" className="hidden" onChange={handleResumeUpload} />
+                                    <input type="file" accept="application/pdf" className="hidden" disabled={resumeBusy} onChange={handleResumeUpload} />
                                 </label>
+                                {me.resume_url && (
+                                    <button onClick={handleRemoveResume} disabled={resumeBusy}
+                                        className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-border text-muted-foreground hover:text-red-500 hover:border-red-200 transition-colors disabled:opacity-50">
+                                        {resumeBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                                        {lang === 'el' ? 'Αφαίρεση' : 'Remove'}
+                                    </button>
+                                )}
                             </div>
                             <p className="text-xs text-muted-foreground mt-1">{lang === 'el' ? 'Μόνο PDF, μέγιστο 5MB' : 'PDF only, max 5MB'}</p>
                         </div>

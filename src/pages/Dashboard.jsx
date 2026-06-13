@@ -27,17 +27,6 @@ const STATUS_COLORS = {
 const statusColors = Object.fromEntries(Object.entries(STATUS_COLORS).map(([k, v]) => [k, v.badge]));
 
 
-function StatCard({ icon: Icon, label, value, color }) {
-    return (
-        <div className="bg-card rounded-2xl border border-border/50 p-5">
-            <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${color}`}><Icon className="w-5 h-5" /></div>
-                <div><p className="text-2xl font-bold text-foreground">{value}</p><p className="text-xs text-muted-foreground">{label}</p></div>
-            </div>
-        </div>
-    );
-}
-
 export default function Dashboard() {
     const { t, lang } = useLanguage();
     const { me, isLoading: authLoading } = useAuth();
@@ -65,6 +54,9 @@ export default function Dashboard() {
 
     // Feature: search applicants within the selected job
     const [applicantSearch, setApplicantSearch] = useState('');
+
+    // Feature: server's own applications — filter by status
+    const [appStatusFilter, setAppStatusFilter] = useState(null);
 
     // Accept confirmation dialog
     const [acceptConfirm, setAcceptConfirm] = useState(null); // appId | null
@@ -107,12 +99,13 @@ export default function Dashboard() {
     if (loading) return <div className="flex justify-center py-32" style={{ background: '#eef4fd', minHeight: '100vh' }}><div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" /></div>;
 
     const isHotel = me?.role === 'hotel';
-    const pendingApps = applications.filter(a => a.status === 'pending').length;
-    const acceptedApps = applications.filter(a => a.status === 'accepted').length;
     const activeJobs = jobs.filter(j => j.status === 'active').length;
     const draftJobs = jobs.filter(j => j.status === 'draft').length;
 
     const jobsWithPending = new Set(applications.filter(a => a.status === 'pending').map(a => a.job_id));
+
+    // Server view: applications filtered by the selected status pill
+    const myApplications = appStatusFilter ? applications.filter(a => a.status === appStatusFilter) : applications;
 
     const baseFilteredJobs = statusFilter === 'pending'
         ? jobs.filter(j => jobsWithPending.has(j.id))
@@ -308,15 +301,6 @@ export default function Dashboard() {
                     </div>
                     {isHotel && <Link to="/post-job"><Button className="rounded-xl gap-2"><Plus className="w-4 h-4" />{t('nav_post_job')}</Button></Link>}
                 </div>
-
-                {!isHotel && (
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                        <StatCard icon={FileText} label={lang === 'el' ? 'Σύνολο Αιτήσεων' : 'Total Applications'} value={applications.length} color="bg-primary/10 text-primary" />
-                        <StatCard icon={Clock} label={lang === 'el' ? 'Σε Αναμονή' : 'Pending'} value={pendingApps} color={STATUS_COLORS.pending.icon} />
-                        <StatCard icon={CheckCircle} label={lang === 'el' ? 'Αποδεκτές' : 'Accepted'} value={acceptedApps} color={STATUS_COLORS.accepted.icon} />
-                        <StatCard icon={XCircle} label={lang === 'el' ? 'Απορρίφθηκαν' : 'Rejected'} value={applications.filter(a => a.status === 'rejected').length} color={STATUS_COLORS.rejected.icon} />
-                    </div>
-                )}
 
                 {isHotel && (
                     <div className="mb-8">
@@ -588,8 +572,37 @@ export default function Dashboard() {
                 {!isHotel && (
                     <div>
                         <h2 className="font-display text-xl font-bold text-foreground mb-4">{t('dash_my_applications')}</h2>
+
+                        {/* Filter pills by application status */}
+                        {applications.length > 0 && (
+                            <div className="flex gap-2 flex-wrap mb-4">
+                                {[
+                                    { key: null, label: lang === 'el' ? 'Όλες' : 'All', count: applications.length },
+                                    ...['pending', 'reviewed', 'accepted', 'rejected', 'withdrawn']
+                                        .map(s => ({ key: s, label: t(`status_${s}`), count: applications.filter(a => a.status === s).length }))
+                                        .filter(p => p.count > 0),
+                                ].map(({ key, label, count }) => (
+                                    <button
+                                        key={String(key)}
+                                        onClick={() => setAppStatusFilter(key)}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                                            appStatusFilter === key
+                                                ? 'bg-primary text-primary-foreground shadow-sm'
+                                                : 'bg-card border border-border/50 text-muted-foreground hover:text-foreground hover:border-border'
+                                        }`}
+                                    >
+                                        {label}
+                                        <span className={`text-xs px-1.5 py-0.5 rounded-full ${appStatusFilter === key ? 'bg-white/20' : 'bg-muted'}`}>{count}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
                         <div className="space-y-3">
-                            {applications.length === 0 ? <p className="text-muted-foreground text-center py-8">{t('common_no_data')}</p> : applications.map(app => (
+                            {applications.length === 0 ? <p className="text-muted-foreground text-center py-8">{t('common_no_data')}</p>
+                            : myApplications.length === 0
+                            ? <p className="text-muted-foreground text-center py-8">{lang === 'el' ? 'Καμία αίτηση σε αυτή την κατάσταση' : 'No applications with this status'}</p>
+                            : myApplications.map(app => (
                                 <div key={app.id} className="bg-card rounded-xl border border-border/50 p-4">
                                     <div className="flex items-start justify-between gap-4">
                                         <div className="flex-1 min-w-0">

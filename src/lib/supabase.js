@@ -5,6 +5,23 @@ export const supabase = createClient(
     import.meta.env.VITE_SUPABASE_ANON_KEY
 );
 
+// Capture password-recovery tokens from the URL hash synchronously at load, before
+// the client consumes the hash. Lets the reset page switch to the *recovery* user's
+// session explicitly, instead of acting on whatever session was already signed in.
+function parseRecoveryTokens() {
+    if (typeof window === 'undefined') return null;
+    const params = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    if (params.get('type') === 'recovery' && params.get('access_token')) {
+        return {
+            access_token: params.get('access_token'),
+            refresh_token: params.get('refresh_token'),
+        };
+    }
+    return null;
+}
+
+export const recoveryTokens = parseRecoveryTokens();
+
 export async function getCurrentUser() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
