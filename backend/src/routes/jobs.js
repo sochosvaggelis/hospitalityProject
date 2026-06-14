@@ -22,13 +22,10 @@ router.post('/photo', authenticate, requireRole('hotel'), upload.single('photo')
   res.json({ url: publicUrl });
 });
 
-const todayStr = () => new Date().toISOString().slice(0, 10);
-
 // Applies the public visibility rules + all list filters to a query builder.
-// Expiry: hide listings whose ISO start_date has passed. null and legacy
-// free-text dates (letter-leading) sort >= today, so they stay visible.
+// The start/end dates are informative only and never affect visibility.
 function applyJobFilters(query, { category, employment_type, location, listing_lang, search }) {
-  query = query.eq('status', 'active').or(`start_date.is.null,start_date.gte.${todayStr()}`);
+  query = query.eq('status', 'active');
   if (category && category !== 'all') query = query.eq('category', category);
   if (employment_type && employment_type !== 'all') query = query.eq('employment_type', employment_type);
   if (location && location !== 'all') query = query.ilike('location', `%${location}%`);
@@ -69,7 +66,7 @@ router.get('/', async (req, res) => {
 router.get('/stats', async (req, res) => {
   const countActive = (loc) => {
     let q = supabase.from('jobs').select('*', { count: 'exact', head: true })
-      .eq('status', 'active').or(`start_date.is.null,start_date.gte.${todayStr()}`);
+      .eq('status', 'active');
     if (loc) q = q.ilike('location', `%${loc}%`);
     return q;
   };
@@ -108,10 +105,21 @@ router.get('/:id', async (req, res) => {
 
 // Hotel only: create job
 router.post('/', authenticate, requireRole('hotel'), async (req, res) => {
-  const { title, title_el, listing_lang, location, description, description_el, requirements, requirements_el, employment_type, salary_amount, salary_period, positions_available, start_date, category, benefits, benefits_el, photo_url, photo_position, status } = req.body;
+  const { title, title_el, listing_lang, location, description, description_el, requirements, requirements_el, employment_type, salary_amount, salary_period, salary_negotiable, positions_available, start_date, end_date, category, benefits, benefits_el, photo_url, photo_position, status, venue_id } = req.body;
+
+  // Snapshot the listing's hotel identity from the chosen venue when present,
+  // falling back to the account profile (keeps single-venue accounts working).
+  let venue = null;
+  if (venue_id) {
+    const { data } = await supabase.from('venues').select('*').eq('id', venue_id).eq('owner_user_id', req.user.id).single();
+    venue = data;
+  }
   const { data: hotelProfile } = await supabase.from('profiles').select('lat, lng').eq('id', req.user.id).single();
+
   const { data, error } = await supabase.from('jobs').insert({
-    title, title_el: title_el || null, listing_lang: listing_lang || 'en', location, description, requirements, employment_type,
+    title, title_el: title_el || null, listing_lang: listing_lang || 'en',
+    location: venue?.location || location,
+    description, requirements, employment_type,
     description_el: description_el || null,
     requirements_el: requirements_el || null,
     benefits_el: benefits_el || null,
@@ -119,12 +127,15 @@ router.post('/', authenticate, requireRole('hotel'), async (req, res) => {
     photo_position: photo_url ? (photo_position || null) : null,
     salary_amount: salary_amount || null,
     salary_period: salary_period || null,
-    positions_available, start_date, category, benefits,
+    salary_negotiable: salary_negotiable || false,
+    positions_available, start_date: start_date || null, end_date: end_date || null, category, benefits,
     status: status === 'draft' ? 'draft' : 'active',
-    hotel_name: req.user.hotel_name || req.user.full_name,
+    venue_id: venue?.id || null,
+    hotel_name: venue?.name || req.user.hotel_name || req.user.full_name,
     hotel_user_id: req.user.id,
-    hotel_logo: req.user.hotel_logo_url || req.user.avatar_url || '',
-    lat: hotelProfile?.lat || null, lng: hotelProfile?.lng || null,
+    hotel_logo: venue?.logo_url || req.user.hotel_logo_url || req.user.avatar_url || '',
+    lat: venue ? (venue.lat ?? null) : (hotelProfile?.lat || null),
+    lng: venue ? (venue.lng ?? null) : (hotelProfile?.lng || null),
   }).select().single();
   if (error) return res.status(500).json({ error: error.message });
   res.status(201).json(data);
@@ -142,13 +153,27 @@ router.put('/:id', authenticate, async (req, res) => {
   const ALLOWED_FIELDS = [
     'title', 'title_el', 'listing_lang', 'location',
     'description', 'description_el', 'requirements', 'requirements_el', 'benefits', 'benefits_el',
-    'employment_type', 'salary_amount', 'salary_period',
-    'positions_available', 'start_date', 'category', 'status', 'photo_url', 'photo_position',
+    'employment_type', 'salary_amount', 'salary_period', 'salary_negotiable',
+    'positions_available', 'start_date', 'end_date', 'category', 'status', 'photo_url', 'photo_position',
   ];
-  const NULLABLE_FIELDS = ['title_el', 'description_el', 'requirements_el', 'benefits_el', 'salary_amount', 'salary_period', 'photo_url', 'photo_position'];
+  const NULLABLE_FIELDS = ['title_el', 'description_el', 'requirements_el', 'benefits_el', 'salary_amount', 'salary_period', 'photo_url', 'photo_position', 'start_date', 'end_date'];
   const updates = {};
   for (const key of ALLOWED_FIELDS) {
     if (key in req.body) updates[key] = NULLABLE_FIELDS.includes(key) ? (req.body[key] || null) : req.body[key];
+  }
+  // Changing the venue re-snapshots the listing's hotel identity from it.
+  if ('venue_id' in req.body) {
+    const { data: venue } = req.body.venue_id
+      ? await supabase.from('venues').select('*').eq('id', req.body.venue_id).eq('owner_user_id', job.hotel_user_id).single()
+      : { data: null };
+    updates.venue_id = venue?.id || null;
+    if (venue) {
+      updates.hotel_name = venue.name;
+      updates.location = venue.location;
+      updates.hotel_logo = venue.logo_url || updates.hotel_logo || '';
+      updates.lat = venue.lat ?? null;
+      updates.lng = venue.lng ?? null;
+    }
   }
   if (Object.keys(updates).length === 0) return res.status(400).json({ error: 'No fields to update' });
   const { data, error } = await supabase.from('jobs').update(updates).eq('id', req.params.id).select().single();

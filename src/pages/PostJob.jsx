@@ -1,18 +1,23 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Briefcase, ImagePlus, Languages, MapPin, FileText, Euro } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import useLanguage from '@/lib/useLanguage';
 import { api } from '@/lib/api';
-import { useIslands, useCategories, useEmploymentTypes } from '@/lib/queries';
+import { useIslands, useCategories, useEmploymentTypes, useMyVenues } from '@/lib/queries';
+import { MONTH_OPTIONS, monthName } from '@/lib/utils';
 import { useAuth } from '@/lib/AuthContext';
 import GuestView from '@/lib/GuestView';
 import JobPreviewCard from '@/components/JobPreviewCard';
 import JobPhotoField from '@/components/JobPhotoField';
+import VenueField from '@/components/VenueField';
+import ChecklistField from '@/components/ChecklistField';
+import { BENEFIT_OPTIONS, REQUIREMENT_OPTIONS } from '@/lib/jobOptions';
 
 function Section({ icon: Icon, title, subtitle, children }) {
     return (
@@ -40,12 +45,12 @@ export default function PostJob() {
     const [photoPreview, setPhotoPreview] = useState(null);
     const [previewLang, setPreviewLang] = useState('en');
     const [form, setForm] = useState({
-        title: '', title_el: '', listing_lang: 'en', location: '',
+        title: '', title_el: '', listing_lang: 'en', venue_id: '', location: '',
         description: '', description_el: '',
         requirements: '', requirements_el: '',
         benefits: '', benefits_el: '',
-        employment_type: '', salary_amount: '', salary_period: 'monthly', positions_available: 1,
-        start_date: '', category: '', status: 'active', photo_position: '50% 50%',
+        employment_type: '', salary_amount: '', salary_period: 'monthly', salary_negotiable: false, positions_available: 1,
+        start_date: '', end_date: '', category: '', status: 'active', photo_position: '50% 50%',
     });
 
     useEffect(() => {
@@ -56,19 +61,39 @@ export default function PostJob() {
     const { data: catsData } = useCategories();
     const { data: empsData } = useEmploymentTypes();
     const { data: islandsData } = useIslands();
+    const { data: venues = [] } = useMyVenues();
 
-    const categories = useMemo(() => (catsData || []).map(c => c.key), [catsData]);
+    const selectedVenue = venues.find(v => v.id === form.venue_id);
+    const venueType = selectedVenue?.type || '';
+
+    // Preselect the venue when arriving from a venue card ("Add job").
+    const [searchParams] = useSearchParams();
+    const venueParam = searchParams.get('venue');
+    useEffect(() => {
+        if (!venueParam || form.venue_id) return;
+        const v = venues.find(x => x.id === venueParam);
+        if (v) setForm(f => ({ ...f, venue_id: v.id, location: v.location || '' }));
+    }, [venueParam, venues, form.venue_id]);
+
+    // Roles available for the chosen venue type. Untagged roles (no venue_types)
+    // apply everywhere; with no venue/type selected yet, all roles show.
+    const cats = useMemo(
+        () => (catsData || []).filter(c => !venueType || !c.venue_types?.length || c.venue_types.includes(venueType)),
+        [catsData, venueType],
+    );
+    const categories = useMemo(() => cats.map(c => c.key), [cats]);
     const empTypes = useMemo(() => (empsData || []).map(e => e.key), [empsData]);
     const islands = useMemo(() => (islandsData || []).map(i => i.name), [islandsData]);
     const catMap = useMemo(() => Object.fromEntries((catsData || []).map(c => [c.key, { en: c.label_en, el: c.label_el }])), [catsData]);
     const empMap = useMemo(() => Object.fromEntries((empsData || []).map(e => [e.key, { en: e.label_en, el: e.label_el }])), [empsData]);
 
-    // Default category/type once reference data arrives
+    // Default the category/type, and reset the category if the chosen venue type
+    // no longer offers the currently-selected role.
     useEffect(() => {
         if (!categories.length && !empTypes.length) return;
         setForm(f => ({
             ...f,
-            category: f.category || categories[0] || '',
+            category: categories.includes(f.category) ? f.category : (categories[0] || ''),
             employment_type: f.employment_type || empTypes[0] || '',
         }));
     }, [categories, empTypes]);
@@ -114,15 +139,16 @@ export default function PostJob() {
         category: categories.includes('pool_beach') ? 'pool_beach' : (categories[0] || ''),
         employment_type: empTypes.includes('seasonal') ? 'seasonal' : (empTypes[0] || ''),
         positions_available: 3,
-        start_date: new Date(Date.now() + 14 * 864e5).toISOString().slice(0, 10),
+        start_date: '5',
+        end_date: '9',
         salary_amount: '1400',
         salary_period: 'monthly',
         description: "Join our 5-star beachfront resort for the summer season. You'll serve drinks and light meals to guests at the pool bar and beach, deliver friendly, attentive service, and help create an unforgettable experience.",
         description_el: 'Γίνε μέλος του 5άστερου παραθαλάσσιου resort μας για τη θερινή σεζόν. Θα σερβίρεις ποτά και ελαφριά γεύματα σε πισίνα και παραλία, με φιλική και προσεκτική εξυπηρέτηση, βοηθώντας να δημιουργήσουμε μια αξέχαστη εμπειρία.',
-        requirements: 'Previous F&B experience preferred. Good English; Greek a plus. Team player, well-groomed, available May–September.',
-        requirements_el: 'Επιθυμητή προϋπηρεσία σε F&B. Καλά Αγγλικά, τα Ελληνικά επιπλέον προσόν. Ομαδικότητα, καλή εμφάνιση, διαθεσιμότητα Μάιο–Σεπτέμβριο.',
-        benefits: 'Accommodation & meals provided, daily transport, tips, end-of-season bonus.',
-        benefits_el: 'Παρέχονται διαμονή & γεύματα, καθημερινή μεταφορά, φιλοδωρήματα, bonus τέλους σεζόν.',
+        requirements: ['Previous experience', 'Good English', 'Team player', 'Full-season availability'].join('\n'),
+        requirements_el: ['Προϋπηρεσία', 'Καλά Αγγλικά', 'Ομαδικό πνεύμα', 'Διαθεσιμότητα όλη τη σεζόν'].join('\n'),
+        benefits: ['Accommodation', 'Meals', 'Transport', 'Tips', 'End-of-season bonus'].join('\n'),
+        benefits_el: ['Διαμονή', 'Γεύματα', 'Μεταφορά', 'Φιλοδωρήματα', 'Bonus τέλους σεζόν'].join('\n'),
     }));
 
     const handlePhotoFile = (file) => {
@@ -142,8 +168,8 @@ export default function PostJob() {
     const biGrid = `grid gap-4 ${form.listing_lang === 'both' ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`;
 
     const activePreviewLang = form.listing_lang === 'both' ? previewLang : form.listing_lang;
-    const hotelName = me?.hotel_name || me?.full_name;
-    const hotelLogo = me?.hotel_logo_url || me?.avatar_url;
+    const hotelName = selectedVenue?.name || me?.hotel_name || me?.full_name;
+    const hotelLogo = selectedVenue?.logo_url || me?.hotel_logo_url || me?.avatar_url;
 
     if (!isAuthenticated && !isLoading) return <GuestView icon={Briefcase} titleEl="Δημοσίευση Αγγελίας" titleEn="Post a Job" descEl="Συνδεθείτε ως ξενοδοχείο για να δημοσιεύσετε νέες θέσεις εργασίας." descEn="Sign in as a hotel to post new job listings." />;
 
@@ -202,11 +228,13 @@ export default function PostJob() {
                     subtitle={lang === 'el' ? 'Πού, τι και πότε' : 'Where, what and when'}>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Τοποθεσία *' : 'Location *'}</label>
-                            <Select value={form.location} onValueChange={v => set('location', v)}>
-                                <SelectTrigger className="rounded-xl"><SelectValue placeholder={lang === 'el' ? 'Επίλεξε νησί' : 'Select island'} /></SelectTrigger>
-                                <SelectContent>{islands.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}</SelectContent>
-                            </Select>
+                            <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Κατάστημα *' : 'Venue *'}</label>
+                            <VenueField
+                                value={form.venue_id}
+                                onSelect={v => setForm(f => ({ ...f, venue_id: v?.id || '', location: v?.location || '' }))}
+                                islands={islands}
+                                lang={lang}
+                            />
                         </div>
                         <div>
                             <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Κατηγορία' : 'Category'}</label>
@@ -216,7 +244,7 @@ export default function PostJob() {
                             </Select>
                         </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Τύπος' : 'Type'}</label>
                             <Select value={form.employment_type} onValueChange={v => set('employment_type', v)}>
@@ -228,11 +256,20 @@ export default function PostJob() {
                             <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Θέσεις' : 'Positions'}</label>
                             <Input type="number" min="1" className="rounded-xl" value={form.positions_available} onChange={e => set('positions_available', Number(e.target.value))} />
                         </div>
-                        <div>
-                            <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Ημ/νία Έναρξης' : 'Start Date'}</label>
-                            <Input type="date" min={new Date().toISOString().slice(0, 10)} className="rounded-xl" value={form.start_date} onChange={e => set('start_date', e.target.value)} />
-                            <p className="text-[11px] text-muted-foreground mt-1">{lang === 'el' ? 'Μετά την ημ/νία αυτή η αγγελία κρύβεται αυτόματα.' : 'After this date the listing is hidden automatically.'}</p>
+                    </div>
+                    <div>
+                        <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Χρονικό Διάστημα' : 'Date Range'}</label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <Select value={form.start_date} onValueChange={v => set('start_date', v)}>
+                                <SelectTrigger className="rounded-xl"><SelectValue placeholder={lang === 'el' ? 'Από μήνα' : 'From month'} /></SelectTrigger>
+                                <SelectContent>{MONTH_OPTIONS.map(m => <SelectItem key={m} value={m}>{monthName(m, lang)}</SelectItem>)}</SelectContent>
+                            </Select>
+                            <Select value={form.end_date} onValueChange={v => set('end_date', v)}>
+                                <SelectTrigger className="rounded-xl"><SelectValue placeholder={lang === 'el' ? 'Έως μήνα' : 'To month'} /></SelectTrigger>
+                                <SelectContent>{MONTH_OPTIONS.map(m => <SelectItem key={m} value={m}>{monthName(m, lang)}</SelectItem>)}</SelectContent>
+                            </Select>
                         </div>
+                        <p className="text-[11px] text-muted-foreground mt-1">{lang === 'el' ? 'Ενημερωτικό — εμφανίζεται στην αγγελία για όποιον κάνει αίτηση.' : 'Informative only — shown on the listing for applicants.'}</p>
                     </div>
                 </Section>
 
@@ -256,6 +293,10 @@ export default function PostJob() {
                             </SelectContent>
                         </Select>
                     </div>
+                    <label className="flex items-center gap-2 cursor-pointer w-fit">
+                        <Checkbox checked={form.salary_negotiable} onCheckedChange={v => set('salary_negotiable', v === true)} />
+                        <span className="text-sm text-foreground">{lang === 'el' ? 'Συζητήσιμη τιμή' : 'Negotiable salary'}</span>
+                    </label>
                 </Section>
 
                 {/* 4. Photo */}
@@ -294,41 +335,23 @@ export default function PostJob() {
                             </div>
                         )}
                     </div>
-                    <div className={biGrid}>
-                        {showEn && (
-                            <div>
-                                <label className="text-sm font-medium text-foreground mb-1.5 block">
-                                    {form.listing_lang === 'both' ? 'EN Requirements' : 'Requirements'}
-                                </label>
-                                <Textarea className="rounded-xl min-h-[80px]" value={form.requirements} onChange={e => set('requirements', e.target.value)} />
-                            </div>
-                        )}
-                        {showEl && (
-                            <div>
-                                <label className="text-sm font-medium text-foreground mb-1.5 block">
-                                    {form.listing_lang === 'both' ? 'EL Απαιτήσεις' : 'Απαιτήσεις'}
-                                </label>
-                                <Textarea className="rounded-xl min-h-[80px]" value={form.requirements_el} onChange={e => set('requirements_el', e.target.value)} />
-                            </div>
-                        )}
+                    <div>
+                        <label className="text-sm font-medium text-foreground mb-2 block">{lang === 'el' ? 'Απαιτήσεις' : 'Requirements'}</label>
+                        <ChecklistField
+                            options={REQUIREMENT_OPTIONS}
+                            enValue={form.requirements} elValue={form.requirements_el}
+                            onChange={(en, el) => setForm(f => ({ ...f, requirements: en, requirements_el: el }))}
+                            lang={lang}
+                        />
                     </div>
-                    <div className={biGrid}>
-                        {showEn && (
-                            <div>
-                                <label className="text-sm font-medium text-foreground mb-1.5 block">
-                                    {form.listing_lang === 'both' ? 'EN Benefits' : 'Benefits'}
-                                </label>
-                                <Textarea className="rounded-xl min-h-[80px]" value={form.benefits} onChange={e => set('benefits', e.target.value)} placeholder="e.g. Accommodation, Meals" />
-                            </div>
-                        )}
-                        {showEl && (
-                            <div>
-                                <label className="text-sm font-medium text-foreground mb-1.5 block">
-                                    {form.listing_lang === 'both' ? 'EL Παροχές' : 'Παροχές'}
-                                </label>
-                                <Textarea className="rounded-xl min-h-[80px]" value={form.benefits_el} onChange={e => set('benefits_el', e.target.value)} placeholder="π.χ. Διαμονή, Γεύματα" />
-                            </div>
-                        )}
+                    <div>
+                        <label className="text-sm font-medium text-foreground mb-2 block">{lang === 'el' ? 'Παροχές' : 'Benefits'}</label>
+                        <ChecklistField
+                            options={BENEFIT_OPTIONS}
+                            enValue={form.benefits} elValue={form.benefits_el}
+                            onChange={(en, el) => setForm(f => ({ ...f, benefits: en, benefits_el: el }))}
+                            lang={lang}
+                        />
                     </div>
                 </Section>
 

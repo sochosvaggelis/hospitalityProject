@@ -10,7 +10,13 @@ router.get('/islands', async (req, res) => {
 });
 
 router.get('/categories', async (req, res) => {
-  const { data, error } = await supabase.from('categories').select('key, label_en, label_el').order('display_order');
+  const { data, error } = await supabase.from('categories').select('key, label_en, label_el, venue_types').order('display_order');
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+router.get('/venue-types', async (req, res) => {
+  const { data, error } = await supabase.from('venue_types').select('key, label_en, label_el').order('display_order');
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });

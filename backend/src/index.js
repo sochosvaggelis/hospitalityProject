@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import referenceRoutes from './routes/reference.js';
 import jobRoutes from './routes/jobs.js';
+import venueRoutes from './routes/venues.js';
 import applicationRoutes from './routes/applications.js';
 import profileRoutes from './routes/profile.js';
 import messageRoutes from './routes/messages.js';
@@ -19,6 +20,7 @@ app.use(express.json());
 
 app.use('/api', referenceRoutes);
 app.use('/api/jobs', jobRoutes);
+app.use('/api/venues', venueRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/conversations', messageRoutes);

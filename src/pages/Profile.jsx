@@ -1,17 +1,15 @@
 import { useState, useEffect } from 'react';
-import { User, Building2, MapPin, Phone, Globe, Award, Languages, Save, Camera, Mail, FileText, Upload, ExternalLink, Star, Trash2, Loader2 } from 'lucide-react';
+import { User, Building2, MapPin, Phone, Award, Languages, Save, Camera, Mail, FileText, Upload, ExternalLink, Trash2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import IslandDropdown from '@/components/IslandDropdown';
+import VenueManager from '@/components/VenueManager';
 import { toast } from 'sonner';
 import useLanguage from '@/lib/useLanguage';
 import { api } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/AuthContext';
 import GuestView from '@/lib/GuestView';
-import LocationPickerMap from '@/components/LocationPickerMap';
-import { ISLAND_COORDS } from '@/lib/islandCoords';
 
 export default function Profile() {
     const { t, lang } = useLanguage();
@@ -19,13 +17,8 @@ export default function Profile() {
     const [saving, setSaving] = useState(false);
     const [form, setForm] = useState({});
     const [newEmail, setNewEmail] = useState('');
-    const [islands, setIslands] = useState([]);
     const [avatarBusy, setAvatarBusy] = useState(false);
     const [resumeBusy, setResumeBusy] = useState(false);
-
-    useEffect(() => {
-        api.islands().then(data => setIslands((data || []).map(i => i.name)));
-    }, []);
 
     useEffect(() => {
         if (me) {
@@ -184,50 +177,51 @@ export default function Profile() {
 
             <div className="bg-card rounded-2xl border border-border/50 p-6 space-y-5">
 
-                {/* Name & Email */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-2">
-                            <User className="w-3.5 h-3.5 text-muted-foreground" />
-                            {lang === 'el' ? 'Ονοματεπώνυμο' : 'Full Name'}
-                        </label>
-                        <Input className="rounded-xl" value={form.full_name || ''} onChange={e => set('full_name', e.target.value)} />
-                    </div>
-                    <div>
-                        <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-2">
-                            <Mail className="w-3.5 h-3.5 text-muted-foreground" />
-                            Email
-                        </label>
-                        <Input type="email" className="rounded-xl" value={newEmail} onChange={e => setNewEmail(e.target.value)} />
-                        {newEmail !== me.email && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                                {lang === 'el' ? 'Θα σταλεί email επιβεβαίωσης' : 'A confirmation email will be sent'}
-                            </p>
-                        )}
-                    </div>
-                </div>
-
-                {/* Phone & Location */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-2"><Phone className="w-3.5 h-3.5 text-muted-foreground" />{t('profile_phone')}</label>
-                        <Input className="rounded-xl" value={form.phone || ''} onChange={e => set('phone', e.target.value)} />
-                    </div>
-                    <div>
-                        <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-2"><MapPin className="w-3.5 h-3.5 text-muted-foreground" />{t('profile_location')}</label>
-                        <Input className="rounded-xl" value={form.location || ''} onChange={e => set('location', e.target.value)} />
-                    </div>
-                </div>
-
-                {/* Bio */}
-                <div>
-                    <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-2"><User className="w-3.5 h-3.5 text-muted-foreground" />{t('profile_bio')}</label>
-                    <Textarea className="rounded-xl min-h-[100px]" value={form.bio || ''} onChange={e => set('bio', e.target.value)} />
-                </div>
-
-                {/* Server-only fields */}
+                {/* Personal fields — only relevant for job seekers. A shop owner's
+                    contact details live on each venue instead. */}
                 {!isHotel && (
                     <>
+                        {/* Name & Email */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-2">
+                                    <User className="w-3.5 h-3.5 text-muted-foreground" />
+                                    {lang === 'el' ? 'Ονοματεπώνυμο' : 'Full Name'}
+                                </label>
+                                <Input className="rounded-xl" value={form.full_name || ''} onChange={e => set('full_name', e.target.value)} />
+                            </div>
+                            <div>
+                                <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-2">
+                                    <Mail className="w-3.5 h-3.5 text-muted-foreground" />
+                                    Email
+                                </label>
+                                <Input type="email" className="rounded-xl" value={newEmail} onChange={e => setNewEmail(e.target.value)} />
+                                {newEmail !== me.email && (
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        {lang === 'el' ? 'Θα σταλεί email επιβεβαίωσης' : 'A confirmation email will be sent'}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Phone & Location */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-2"><Phone className="w-3.5 h-3.5 text-muted-foreground" />{t('profile_phone')}</label>
+                                <Input className="rounded-xl" value={form.phone || ''} onChange={e => set('phone', e.target.value)} />
+                            </div>
+                            <div>
+                                <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-2"><MapPin className="w-3.5 h-3.5 text-muted-foreground" />{t('profile_location')}</label>
+                                <Input className="rounded-xl" value={form.location || ''} onChange={e => set('location', e.target.value)} />
+                            </div>
+                        </div>
+
+                        {/* Bio */}
+                        <div>
+                            <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-2"><User className="w-3.5 h-3.5 text-muted-foreground" />{t('profile_bio')}</label>
+                            <Textarea className="rounded-xl min-h-[100px]" value={form.bio || ''} onChange={e => set('bio', e.target.value)} />
+                        </div>
+
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-2"><Award className="w-3.5 h-3.5 text-muted-foreground" />{t('profile_experience')}</label>
@@ -282,64 +276,25 @@ export default function Profile() {
                     </>
                 )}
 
-                {/* Hotel-only fields */}
+                {/* Hotel-only: venue management. Each venue is an independent business
+                    with its own name/stars/website/description — edited on its own page. */}
                 {isHotel && (
                     <>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-2"><Building2 className="w-3.5 h-3.5 text-muted-foreground" />{t('profile_hotel_name')}</label>
-                                <Input className="rounded-xl" value={form.hotel_name || ''} onChange={e => set('hotel_name', e.target.value)} />
-                            </div>
-                            <div>
-                                <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-2"><Star className="w-3.5 h-3.5 text-muted-foreground" />{lang === 'el' ? 'Αστέρια' : 'Star Rating'}</label>
-                                <div className="flex items-center gap-1.5 h-10">
-                                    {[1,2,3,4,5].map(n => (
-                                        <button
-                                            key={n}
-                                            type="button"
-                                            onClick={() => set('hotel_stars', form.hotel_stars === n ? null : n)}
-                                            className="transition-transform hover:scale-110"
-                                        >
-                                            <Star className={`w-6 h-6 ${n <= (form.hotel_stars || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground/30 hover:text-yellow-300'}`} />
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                        <div>
-                            <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-2"><MapPin className="w-3.5 h-3.5 text-muted-foreground" />{lang === 'el' ? 'Νησί' : 'Island'}</label>
-                            <IslandDropdown
-                                value={form.location || ''}
-                                onValueChange={v => setForm(f => ({ ...f, location: v, lat: null, lng: null }))}
-                                islands={islands}
-                                placeholder={lang === 'el' ? 'Επίλεξε νησί' : 'Select island'}
-                            />
-                            {form.location && (
-                                <LocationPickerMap
-                                    island={form.location}
-                                    lat={form.lat}
-                                    lng={form.lng}
-                                    lang={lang}
-                                    onChange={(lat, lng) => setForm(f => ({ ...f, lat, lng }))}
-                                />
-                            )}
-                        </div>
-                        <div>
-                            <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-2"><Building2 className="w-3.5 h-3.5 text-muted-foreground" />{t('profile_hotel_desc')}</label>
-                            <Textarea className="rounded-xl min-h-[100px]" value={form.hotel_description || ''} onChange={e => set('hotel_description', e.target.value)} placeholder={lang === 'el' ? 'Περιγράψτε το ξενοδοχείο σας...' : 'Describe your hotel...'} />
-                        </div>
-                        <div>
-                            <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-2"><Globe className="w-3.5 h-3.5 text-muted-foreground" />{t('profile_hotel_website')}</label>
-                            <Input className="rounded-xl" value={form.hotel_website || ''} onChange={e => set('hotel_website', e.target.value)} placeholder="www.myhotel.gr" />
+                        <div className="border-t border-border/50 pt-5">
+                            <VenueManager lang={lang} />
                         </div>
                     </>
                 )}
 
-                <div className="flex justify-end pt-2">
-                    <Button onClick={handleSave} disabled={saving} className="rounded-xl gap-2 px-6">
-                        <Save className="w-4 h-4" />{saving ? t('common_loading') : t('profile_save')}
-                    </Button>
-                </div>
+                {/* The account-level Save only persists personal fields, which a hotel
+                    doesn't have — venues save on their own pages. */}
+                {!isHotel && (
+                    <div className="flex justify-end pt-2">
+                        <Button onClick={handleSave} disabled={saving} className="rounded-xl gap-2 px-6">
+                            <Save className="w-4 h-4" />{saving ? t('common_loading') : t('profile_save')}
+                        </Button>
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -6,14 +6,23 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import GuestView from '@/lib/GuestView';
 import JobPhotoField from '@/components/JobPhotoField';
 import useLanguage from '@/lib/useLanguage';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
+import { MONTH_OPTIONS, monthName } from '@/lib/utils';
+import ChecklistField from '@/components/ChecklistField';
+import VenueField from '@/components/VenueField';
+import { useIslands, useMyVenues } from '@/lib/queries';
+import { BENEFIT_OPTIONS, REQUIREMENT_OPTIONS } from '@/lib/jobOptions';
 import moment from 'moment';
 import toast from 'react-hot-toast';
+
+// Applications still in play (not rejected/withdrawn) — the applicant's "Active" filter.
+const ACTIVE_APP_STATUSES = ['pending', 'reviewed', 'accepted'];
 
 const STATUS_COLORS = {
     pending:   { badge: 'bg-yellow-100 text-yellow-800', icon: 'bg-yellow-50 text-yellow-600' },
@@ -39,11 +48,15 @@ export default function Dashboard() {
     const [favorites, setFavorites] = useState(new Set()); // set of applicant_emails
     const [loading, setLoading] = useState(true);
     const [selectedJobId, setSelectedJobId] = useState(null);
-    const [statusFilter, setStatusFilter] = useState(null); // null | 'pending' | 'accepted' | 'active'
+    const [statusFilter, setStatusFilter] = useState('active'); // 'active' | 'closed' | 'draft' | 'pending'
     const [profileModal, setProfileModal] = useState(null); // { loading, data }
     const [editModal, setEditModal] = useState(null); // { job, form, saving }
     const [deleteConfirm, setDeleteConfirm] = useState(null); // jobId
     const [withdrawConfirm, setWithdrawConfirm] = useState(null); // applicationId
+    const { data: islandsData } = useIslands();
+    const islandNames = (islandsData || []).map(i => i.name);
+    const { data: venues = [] } = useMyVenues(me?.role === 'hotel');
+    const [venueFilter, setVenueFilter] = useState(''); // hotel "My jobs" is scoped to one venue
 
     // Feature: Sorting
     const [sortBy, setSortBy] = useState('newest'); // 'newest' | 'oldest' | 'most_apps'
@@ -58,7 +71,7 @@ export default function Dashboard() {
     const [applicantSearch, setApplicantSearch] = useState('');
 
     // Feature: server's own applications — filter by status
-    const [appStatusFilter, setAppStatusFilter] = useState(null);
+    const [appStatusFilter, setAppStatusFilter] = useState('active'); // 'active' (live) | exact status
 
     // Accept confirmation dialog
     const [acceptConfirm, setAcceptConfirm] = useState(null); // appId | null
@@ -101,19 +114,26 @@ export default function Dashboard() {
     if (loading) return <div className="flex justify-center py-32" style={{ background: '#eef4fd', minHeight: '100vh' }}><div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" /></div>;
 
     const isHotel = me?.role === 'hotel';
-    const activeJobs = jobs.filter(j => j.status === 'active').length;
-    const draftJobs = jobs.filter(j => j.status === 'draft').length;
+    // Hotel "My jobs" is scoped to the selected venue — nothing shows until one is picked.
+    const venueScopedJobs = venueFilter ? jobs.filter(j => j.venue_id === venueFilter) : [];
+    const activeJobs = venueScopedJobs.filter(j => j.status === 'active').length;
+    const draftJobs = venueScopedJobs.filter(j => j.status === 'draft').length;
+    const closedJobs = venueScopedJobs.filter(j => j.status === 'closed').length;
 
     const jobsWithPending = new Set(applications.filter(a => a.status === 'pending').map(a => a.job_id));
+    const venuePendingCount = venueScopedJobs.filter(j => jobsWithPending.has(j.id)).length;
 
     // Server view: applications filtered by the selected status pill
-    const myApplications = appStatusFilter ? applications.filter(a => a.status === appStatusFilter) : applications;
+    // "active" groups the live applications (still in play); other keys match an exact status.
+    const myApplications = appStatusFilter === 'active'
+        ? applications.filter(a => ACTIVE_APP_STATUSES.includes(a.status))
+        : applications.filter(a => a.status === appStatusFilter);
 
     const baseFilteredJobs = statusFilter === 'pending'
-        ? jobs.filter(j => jobsWithPending.has(j.id))
+        ? venueScopedJobs.filter(j => jobsWithPending.has(j.id))
         : statusFilter
-            ? jobs.filter(j => j.status === statusFilter)
-            : jobs;
+            ? venueScopedJobs.filter(j => j.status === statusFilter)
+            : venueScopedJobs;
 
     const selectedJob = jobs.find(j => j.id === selectedJobId) || null;
     const allSelectedJobApps = selectedJob ? applications.filter(a => a.job_id === selectedJob.id) : [];
@@ -211,6 +231,7 @@ export default function Dashboard() {
             title: job.title || '',
             title_el: job.title_el || '',
             listing_lang: job.listing_lang || 'en',
+            venue_id: job.venue_id || '',
             location: job.location || '',
             description: job.description || '',
             description_el: job.description_el || '',
@@ -219,8 +240,10 @@ export default function Dashboard() {
             employment_type: job.employment_type || '',
             salary_amount: job.salary_amount || '',
             salary_period: job.salary_period || 'monthly',
+            salary_negotiable: job.salary_negotiable || false,
             positions_available: job.positions_available || 1,
             start_date: job.start_date || '',
+            end_date: job.end_date || '',
             category: job.category || '',
             benefits: job.benefits || '',
             benefits_el: job.benefits_el || '',
@@ -310,6 +333,7 @@ export default function Dashboard() {
 
     // Feature: Empty state per filter — friendly messages
     const emptyStateMessage = () => {
+        if (!venueFilter) return lang === 'el' ? 'Διάλεξε κατάστημα για να δεις τις αγγελίες του' : 'Pick a venue to see its job posts';
         if (statusFilter === 'draft') return lang === 'el' ? 'Δεν υπάρχουν πρόχειρα' : 'No draft jobs';
         if (statusFilter === 'pending') return lang === 'el' ? 'Δεν υπάρχουν αγγελίες με αιτήσεις σε αναμονή' : 'No jobs with pending applications';
         if (statusFilter === 'active') return lang === 'el' ? 'Δεν υπάρχουν ενεργές αγγελίες' : 'No active jobs';
@@ -333,15 +357,25 @@ export default function Dashboard() {
                     <div className="mb-8">
                         <h2 className="font-display text-xl font-bold text-foreground mb-4">{t('dash_my_jobs')}</h2>
 
-                        {/* Filter pills + Sort dropdown */}
+                        {/* Venue filter — job posts are shown per venue; pick one first */}
+                        <div className="mb-4 max-w-xs">
+                            <Select value={venueFilter} onValueChange={v => { setVenueFilter(v); setSelectedJobId(null); }}>
+                                <SelectTrigger className="rounded-xl bg-card border-border/50"><SelectValue placeholder={lang === 'el' ? 'Διάλεξε κατάστημα' : 'Select venue'} /></SelectTrigger>
+                                <SelectContent>
+                                    {venues.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Filter pills + Sort dropdown (only once a venue is chosen) */}
+                        {venueFilter && (
                         <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
                             <div className="flex gap-2 flex-wrap">
                                 {[
-                                    { key: null,       label: lang === 'el' ? 'Όλες' : 'All',      count: jobs.length },
                                     { key: 'active',   label: lang === 'el' ? 'Ενεργές' : 'Active',  count: activeJobs },
-                                    { key: 'closed',   label: lang === 'el' ? 'Κλειστές' : 'Closed', count: jobs.filter(j => j.status === 'closed').length },
+                                    { key: 'closed',   label: lang === 'el' ? 'Κλειστές' : 'Closed', count: closedJobs },
                                     { key: 'draft',    label: lang === 'el' ? 'Πρόχειρα' : 'Drafts', count: draftJobs },
-                                    { key: 'pending',  label: lang === 'el' ? 'Σε αναμονή' : 'Pending', count: jobsWithPending.size },
+                                    { key: 'pending',  label: lang === 'el' ? 'Σε αναμονή' : 'Pending', count: venuePendingCount },
                                 ].map(({ key, label, count }) => (
                                     <button
                                         key={String(key)}
@@ -369,6 +403,7 @@ export default function Dashboard() {
                                 <option value="most_apps">{lang === 'el' ? 'Περισσότερες αιτήσεις' : 'Most applications'}</option>
                             </select>
                         </div>
+                        )}
 
                         <div className="lg:grid lg:grid-cols-[320px_minmax(0,1fr)] lg:gap-4 lg:items-start">
                             {/* Left: job list */}
@@ -413,7 +448,7 @@ export default function Dashboard() {
                             <div className={`${selectedJob ? '' : 'hidden lg:block'} mt-4 lg:mt-0`}>
                                 {!selectedJob ? (
                                     filteredJobs.length > 0 && (
-                                        <div className="border border-dashed border-border rounded-xl py-24 text-center text-sm text-muted-foreground">
+                                        <div className="bg-card border border-dashed border-border rounded-xl py-24 text-center text-sm text-muted-foreground">
                                             {lang === 'el' ? 'Επίλεξε μια αγγελία για να δεις τις αιτήσεις της' : 'Select a job to view its applications'}
                                         </div>
                                     )
@@ -604,7 +639,7 @@ export default function Dashboard() {
                         {applications.length > 0 && (
                             <div className="flex gap-2 flex-wrap mb-4">
                                 {[
-                                    { key: null, label: lang === 'el' ? 'Όλες' : 'All', count: applications.length },
+                                    { key: 'active', label: lang === 'el' ? 'Ενεργές' : 'Active', count: applications.filter(a => ACTIVE_APP_STATUSES.includes(a.status)).length },
                                     ...['pending', 'reviewed', 'accepted', 'rejected', 'withdrawn']
                                         .map(s => ({ key: s, label: t(`status_${s}`), count: applications.filter(a => a.status === s).length }))
                                         .filter(p => p.count > 0),
@@ -681,8 +716,13 @@ export default function Dashboard() {
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Τοποθεσία' : 'Location'}</label>
-                                <Input className="rounded-xl" value={editModal.form.location} onChange={e => setEditModal(m => ({ ...m, form: { ...m.form, location: e.target.value } }))} />
+                                <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Κατάστημα' : 'Venue'}</label>
+                                <VenueField
+                                    value={editModal.form.venue_id}
+                                    onSelect={v => setEditModal(m => ({ ...m, form: { ...m.form, venue_id: v?.id || '', location: v?.location || '' } }))}
+                                    islands={islandNames}
+                                    lang={lang}
+                                />
                             </div>
                             <div>
                                 <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Μισθός (€)' : 'Salary (€)'}</label>
@@ -697,16 +737,27 @@ export default function Dashboard() {
                                         </SelectContent>
                                     </Select>
                                 </div>
+                                <label className="flex items-center gap-2 cursor-pointer w-fit mt-2">
+                                    <Checkbox checked={editModal.form.salary_negotiable} onCheckedChange={v => setEditModal(m => ({ ...m, form: { ...m.form, salary_negotiable: v === true } }))} />
+                                    <span className="text-sm text-foreground">{lang === 'el' ? 'Συζητήσιμη τιμή' : 'Negotiable salary'}</span>
+                                </label>
                             </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Θέσεις' : 'Positions'}</label>
-                                <Input type="number" className="rounded-xl" value={editModal.form.positions_available} onChange={e => setEditModal(m => ({ ...m, form: { ...m.form, positions_available: Number(e.target.value) } }))} />
-                            </div>
-                            <div>
-                                <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Ημ/νία Έναρξης' : 'Start Date'}</label>
-                                <Input type="date" className="rounded-xl" value={/^\d{4}-\d{2}-\d{2}$/.test(editModal.form.start_date) ? editModal.form.start_date : ''} onChange={e => setEditModal(m => ({ ...m, form: { ...m.form, start_date: e.target.value } }))} />
+                        <div>
+                            <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Θέσεις' : 'Positions'}</label>
+                            <Input type="number" className="rounded-xl" value={editModal.form.positions_available} onChange={e => setEditModal(m => ({ ...m, form: { ...m.form, positions_available: Number(e.target.value) } }))} />
+                        </div>
+                        <div>
+                            <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Χρονικό Διάστημα' : 'Date Range'}</label>
+                            <div className="grid grid-cols-2 gap-3">
+                                <Select value={editModal.form.start_date} onValueChange={v => setEditModal(m => ({ ...m, form: { ...m.form, start_date: v } }))}>
+                                    <SelectTrigger className="rounded-xl"><SelectValue placeholder={lang === 'el' ? 'Από μήνα' : 'From month'} /></SelectTrigger>
+                                    <SelectContent>{MONTH_OPTIONS.map(mo => <SelectItem key={mo} value={mo}>{monthName(mo, lang)}</SelectItem>)}</SelectContent>
+                                </Select>
+                                <Select value={editModal.form.end_date} onValueChange={v => setEditModal(m => ({ ...m, form: { ...m.form, end_date: v } }))}>
+                                    <SelectTrigger className="rounded-xl"><SelectValue placeholder={lang === 'el' ? 'Έως μήνα' : 'To month'} /></SelectTrigger>
+                                    <SelectContent>{MONTH_OPTIONS.map(mo => <SelectItem key={mo} value={mo}>{monthName(mo, lang)}</SelectItem>)}</SelectContent>
+                                </Select>
                             </div>
                         </div>
                         <div>
@@ -738,34 +789,24 @@ export default function Dashboard() {
                             )}
                         </div>
                         {/* Requirements */}
-                        <div className={`grid gap-3 ${editModal.form.listing_lang === 'both' ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                            {(editModal.form.listing_lang === 'en' || editModal.form.listing_lang === 'both') && (
-                                <div>
-                                    <label className="text-sm font-medium text-foreground mb-1.5 block">{editModal.form.listing_lang === 'both' ? 'EN Requirements' : (lang === 'el' ? 'Απαιτήσεις' : 'Requirements')}</label>
-                                    <Textarea className="rounded-xl min-h-[80px]" value={editModal.form.requirements} onChange={e => setEditModal(m => ({ ...m, form: { ...m.form, requirements: e.target.value } }))} />
-                                </div>
-                            )}
-                            {(editModal.form.listing_lang === 'el' || editModal.form.listing_lang === 'both') && (
-                                <div>
-                                    <label className="text-sm font-medium text-foreground mb-1.5 block">{editModal.form.listing_lang === 'both' ? 'EL Απαιτήσεις' : 'Απαιτήσεις'}</label>
-                                    <Textarea className="rounded-xl min-h-[80px]" value={editModal.form.requirements_el} onChange={e => setEditModal(m => ({ ...m, form: { ...m.form, requirements_el: e.target.value } }))} />
-                                </div>
-                            )}
+                        <div>
+                            <label className="text-sm font-medium text-foreground mb-2 block">{lang === 'el' ? 'Απαιτήσεις' : 'Requirements'}</label>
+                            <ChecklistField
+                                options={REQUIREMENT_OPTIONS}
+                                enValue={editModal.form.requirements} elValue={editModal.form.requirements_el}
+                                onChange={(en, el) => setEditModal(m => ({ ...m, form: { ...m.form, requirements: en, requirements_el: el } }))}
+                                lang={lang}
+                            />
                         </div>
                         {/* Benefits */}
-                        <div className={`grid gap-3 ${editModal.form.listing_lang === 'both' ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                            {(editModal.form.listing_lang === 'en' || editModal.form.listing_lang === 'both') && (
-                                <div>
-                                    <label className="text-sm font-medium text-foreground mb-1.5 block">{editModal.form.listing_lang === 'both' ? 'EN Benefits' : (lang === 'el' ? 'Παροχές' : 'Benefits')}</label>
-                                    <Textarea className="rounded-xl min-h-[60px]" value={editModal.form.benefits} onChange={e => setEditModal(m => ({ ...m, form: { ...m.form, benefits: e.target.value } }))} />
-                                </div>
-                            )}
-                            {(editModal.form.listing_lang === 'el' || editModal.form.listing_lang === 'both') && (
-                                <div>
-                                    <label className="text-sm font-medium text-foreground mb-1.5 block">{editModal.form.listing_lang === 'both' ? 'EL Παροχές' : 'Παροχές'}</label>
-                                    <Textarea className="rounded-xl min-h-[60px]" value={editModal.form.benefits_el} onChange={e => setEditModal(m => ({ ...m, form: { ...m.form, benefits_el: e.target.value } }))} />
-                                </div>
-                            )}
+                        <div>
+                            <label className="text-sm font-medium text-foreground mb-2 block">{lang === 'el' ? 'Παροχές' : 'Benefits'}</label>
+                            <ChecklistField
+                                options={BENEFIT_OPTIONS}
+                                enValue={editModal.form.benefits} elValue={editModal.form.benefits_el}
+                                onChange={(en, el) => setEditModal(m => ({ ...m, form: { ...m.form, benefits: en, benefits_el: el } }))}
+                                lang={lang}
+                            />
                         </div>
                         <DialogFooter className="gap-2 pt-2">
                             <Button variant="outline" className="rounded-xl" onClick={() => setEditModal(null)}>{lang === 'el' ? 'Ακύρωση' : 'Cancel'}</Button>

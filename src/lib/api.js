@@ -35,6 +35,7 @@ export const api = {
     islands: () => get('/api/islands'),
     categories: () => get('/api/categories'),
     employmentTypes: () => get('/api/employment-types'),
+    venueTypes: () => get('/api/venue-types'),
 
     // Jobs
     getJobs: (params = {}) => {
@@ -53,6 +54,19 @@ export const api = {
     },
     updateJob: (id, body) => request('PUT', `/api/jobs/${id}`, body),
     deleteJob: (id) => del(`/api/jobs/${id}`),
+
+    // Venues (a hotel account's shops/properties)
+    getMyVenues: () => get('/api/venues/mine'),
+    getVenuesByOwner: (userId) => get(`/api/venues/by-owner/${userId}`),
+    getVenueProfile: (id) => get(`/api/venues/${id}/profile`),
+    createVenue: (body) => post('/api/venues', body),
+    uploadVenueLogo: (file) => {
+        const form = new FormData();
+        form.append('image', file);
+        return request('POST', '/api/venues/logo', form, true);
+    },
+    updateVenue: (id, body) => request('PUT', `/api/venues/${id}`, body),
+    deleteVenue: (id) => del(`/api/venues/${id}`),
 
     // Applications
     getApplications: () => get('/api/applications'),
