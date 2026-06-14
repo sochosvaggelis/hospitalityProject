@@ -134,7 +134,7 @@ export default function Jobs() {
                     <p className="text-center text-muted-foreground py-16">{t('jobs_no_results')}</p>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {filteredJobs.map(job => <JobCard key={job.id} job={job} islands={islandData} />)}
+                        {filteredJobs.map(job => <JobCard key={job.id} job={job} islands={islandData} showFavorite={false} />)}
                     </div>
                 )}
             </div>

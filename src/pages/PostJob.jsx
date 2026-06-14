@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Briefcase, ImagePlus, X, Languages, MapPin, FileText, Euro } from 'lucide-react';
+import { Briefcase, ImagePlus, Languages, MapPin, FileText, Euro } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,6 +11,8 @@ import { api } from '@/lib/api';
 import { useIslands, useCategories, useEmploymentTypes } from '@/lib/queries';
 import { useAuth } from '@/lib/AuthContext';
 import GuestView from '@/lib/GuestView';
+import JobPreviewCard from '@/components/JobPreviewCard';
+import JobPhotoField from '@/components/JobPhotoField';
 
 function Section({ icon: Icon, title, subtitle, children }) {
     return (
@@ -36,14 +38,14 @@ export default function PostJob() {
     const [submitting, setSubmitting] = useState(false);
     const [photoFile, setPhotoFile] = useState(null);
     const [photoPreview, setPhotoPreview] = useState(null);
-    const photoInputRef = useRef(null);
+    const [previewLang, setPreviewLang] = useState('en');
     const [form, setForm] = useState({
         title: '', title_el: '', listing_lang: 'en', location: '',
         description: '', description_el: '',
         requirements: '', requirements_el: '',
         benefits: '', benefits_el: '',
         employment_type: '', salary_amount: '', salary_period: 'monthly', positions_available: 1,
-        start_date: '', category: '', status: 'active',
+        start_date: '', category: '', status: 'active', photo_position: '50% 50%',
     });
 
     useEffect(() => {
@@ -103,17 +105,27 @@ export default function PostJob() {
 
     const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-    const handlePhotoSelect = (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        if (!file.type.startsWith('image/')) {
-            toast.error(lang === 'el' ? 'Μόνο αρχεία εικόνας' : 'Only image files are allowed');
-            return;
-        }
-        if (file.size > 5 * 1024 * 1024) {
-            toast.error(lang === 'el' ? 'Μέγιστο μέγεθος 5MB' : 'Maximum size is 5MB');
-            return;
-        }
+    const fillDemo = () => setForm(f => ({
+        ...f,
+        listing_lang: 'both',
+        title: 'Pool & Beach Waiter/Waitress',
+        title_el: 'Σερβιτόρος/α Πισίνας & Παραλίας',
+        location: islands[0] || '',
+        category: categories.includes('pool_beach') ? 'pool_beach' : (categories[0] || ''),
+        employment_type: empTypes.includes('seasonal') ? 'seasonal' : (empTypes[0] || ''),
+        positions_available: 3,
+        start_date: new Date(Date.now() + 14 * 864e5).toISOString().slice(0, 10),
+        salary_amount: '1400',
+        salary_period: 'monthly',
+        description: "Join our 5-star beachfront resort for the summer season. You'll serve drinks and light meals to guests at the pool bar and beach, deliver friendly, attentive service, and help create an unforgettable experience.",
+        description_el: 'Γίνε μέλος του 5άστερου παραθαλάσσιου resort μας για τη θερινή σεζόν. Θα σερβίρεις ποτά και ελαφριά γεύματα σε πισίνα και παραλία, με φιλική και προσεκτική εξυπηρέτηση, βοηθώντας να δημιουργήσουμε μια αξέχαστη εμπειρία.',
+        requirements: 'Previous F&B experience preferred. Good English; Greek a plus. Team player, well-groomed, available May–September.',
+        requirements_el: 'Επιθυμητή προϋπηρεσία σε F&B. Καλά Αγγλικά, τα Ελληνικά επιπλέον προσόν. Ομαδικότητα, καλή εμφάνιση, διαθεσιμότητα Μάιο–Σεπτέμβριο.',
+        benefits: 'Accommodation & meals provided, daily transport, tips, end-of-season bonus.',
+        benefits_el: 'Παρέχονται διαμονή & γεύματα, καθημερινή μεταφορά, φιλοδωρήματα, bonus τέλους σεζόν.',
+    }));
+
+    const handlePhotoFile = (file) => {
         setPhotoFile(file);
         setPhotoPreview(URL.createObjectURL(file));
     };
@@ -122,26 +134,36 @@ export default function PostJob() {
         if (photoPreview) URL.revokeObjectURL(photoPreview);
         setPhotoFile(null);
         setPhotoPreview(null);
-        if (photoInputRef.current) photoInputRef.current.value = '';
+        set('photo_position', '50% 50%');
     };
 
     const showEn = form.listing_lang === 'en' || form.listing_lang === 'both';
     const showEl = form.listing_lang === 'el' || form.listing_lang === 'both';
     const biGrid = `grid gap-4 ${form.listing_lang === 'both' ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`;
 
+    const activePreviewLang = form.listing_lang === 'both' ? previewLang : form.listing_lang;
+    const hotelName = me?.hotel_name || me?.full_name;
+    const hotelLogo = me?.hotel_logo_url || me?.avatar_url;
+
     if (!isAuthenticated && !isLoading) return <GuestView icon={Briefcase} titleEl="Δημοσίευση Αγγελίας" titleEn="Post a Job" descEl="Συνδεθείτε ως ξενοδοχείο για να δημοσιεύσετε νέες θέσεις εργασίας." descEn="Sign in as a hotel to post new job listings." />;
 
     return (
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
-            <div className="mb-8">
-                <h1 className="font-display text-3xl font-bold text-foreground">{t('nav_post_job')}</h1>
-                <p className="text-sm text-muted-foreground mt-1">
-                    {lang === 'el'
-                        ? 'Συμπλήρωσε τα στοιχεία της θέσης — όσο πιο πλήρης η αγγελία, τόσο περισσότερες αιτήσεις.'
-                        : 'Fill in the position details — the more complete the listing, the more applications you get.'}
-                </p>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+            <div className="mb-8 flex items-start justify-between gap-4">
+                <div>
+                    <h1 className="font-display text-3xl font-bold text-foreground">{t('nav_post_job')}</h1>
+                    <p className="text-sm text-muted-foreground mt-1">
+                        {lang === 'el'
+                            ? 'Συμπλήρωσε τα στοιχεία της θέσης — όσο πιο πλήρης η αγγελία, τόσο περισσότερες αιτήσεις.'
+                            : 'Fill in the position details — the more complete the listing, the more applications you get.'}
+                    </p>
+                </div>
+                {import.meta.env.DEV && (
+                    <Button variant="outline" size="sm" onClick={fillDemo} className="rounded-xl flex-shrink-0">Fill demo</Button>
+                )}
             </div>
 
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,440px)] gap-8 items-start">
             <div className="space-y-5">
                 {/* 1. Language & Title */}
                 <Section icon={Languages}
@@ -240,22 +262,14 @@ export default function PostJob() {
                 <Section icon={ImagePlus}
                     title={lang === 'el' ? 'Φωτογραφία' : 'Photo'}
                     subtitle={lang === 'el' ? 'Εμφανίζεται στην κάρτα της αγγελίας — π.χ. το μαγαζί ή η θέα' : 'Shown on the job card — e.g. your venue or the view'}>
-                    <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoSelect} />
-                    {photoPreview ? (
-                        <div className="relative rounded-xl overflow-hidden border border-border/50">
-                            <img src={photoPreview} alt="" className="w-full h-44 object-cover" />
-                            <button type="button" onClick={removePhoto}
-                                className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/50 hover:bg-black/70 text-white flex items-center justify-center transition-colors">
-                                <X className="w-4 h-4" />
-                            </button>
-                        </div>
-                    ) : (
-                        <button type="button" onClick={() => photoInputRef.current?.click()}
-                            className="w-full h-28 rounded-xl border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-colors flex flex-col items-center justify-center gap-1.5 text-muted-foreground">
-                            <ImagePlus className="w-6 h-6" />
-                            <span className="text-sm">{lang === 'el' ? 'Πρόσθεσε φωτογραφία (έως 5MB)' : 'Add a photo (up to 5MB)'}</span>
-                        </button>
-                    )}
+                    <JobPhotoField
+                        src={photoPreview}
+                        position={form.photo_position}
+                        onFile={handlePhotoFile}
+                        onPositionChange={pos => set('photo_position', pos)}
+                        onRemove={removePhoto}
+                        lang={lang}
+                    />
                 </Section>
 
                 {/* 5. Description */}
@@ -327,6 +341,36 @@ export default function PostJob() {
                         {submitting ? t('common_loading') : (lang === 'el' ? 'Δημοσίευση' : 'Post Job')}
                     </Button>
                 </div>
+            </div>
+
+            {/* Live preview */}
+            <aside className="lg:sticky lg:top-8 space-y-4">
+                <div className="flex items-center justify-between gap-2">
+                    <h2 className="font-display font-semibold text-foreground">{lang === 'el' ? 'Προεπισκόπηση' : 'Live preview'}</h2>
+                    {form.listing_lang === 'both' && (
+                        <div className="inline-flex rounded-xl bg-muted p-1">
+                            {['en', 'el'].map(pl => (
+                                <button key={pl} type="button" onClick={() => setPreviewLang(pl)}
+                                    className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${previewLang === pl ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+                                    {pl === 'el' ? 'Ελληνικά' : 'English'}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+                <div className="space-y-5 max-h-[calc(100vh-7rem)] overflow-y-auto pr-1">
+                    <JobPreviewCard
+                        form={form}
+                        photoPreview={photoPreview}
+                        lang={activePreviewLang}
+                        hotelName={hotelName}
+                        hotelLogo={hotelLogo}
+                        empMap={empMap}
+                        catMap={catMap}
+                        islands={islandsData}
+                    />
+                </div>
+            </aside>
             </div>
         </div>
     );

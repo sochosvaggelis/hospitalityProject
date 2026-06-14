@@ -92,9 +92,14 @@ export const api = {
     toggleArchive: (convId) => patch(`/api/conversations/${convId}/archive`, {}),
     toggleMute: (convId) => patch(`/api/conversations/${convId}/mute`, {}),
 
-    // Favorites
+    // Favorites (hotels star applicants)
     getFavorites: () => get('/api/favorites'),
     toggleFavorite: (applicant_email, applicant_name) => post('/api/favorites/toggle', { applicant_email, applicant_name }),
+
+    // User favourites (job seekers save hotels & jobs)
+    getUserFavorites: () => get('/api/user-favorites'),
+    getUserFavoriteIds: () => get('/api/user-favorites/ids'),
+    toggleUserFavorite: (kind, ref_id) => post('/api/user-favorites/toggle', { kind, ref_id }),
 
     // Notifications
     getNotifications: () => get('/api/notifications'),

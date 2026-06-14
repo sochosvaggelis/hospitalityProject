@@ -8,6 +8,7 @@ import profileRoutes from './routes/profile.js';
 import messageRoutes from './routes/messages.js';
 import adminRoutes from './routes/admin.js';
 import favoritesRoutes from './routes/favorites.js';
+import userFavoritesRoutes from './routes/userFavorites.js';
 import notificationRoutes from './routes/notifications.js';
 import applicantNotesRoutes from './routes/applicantNotes.js';
 
@@ -23,6 +24,7 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/conversations', messageRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/favorites', favoritesRoutes);
+app.use('/api/user-favorites', userFavoritesRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/applicant-notes', applicantNotesRoutes);
 

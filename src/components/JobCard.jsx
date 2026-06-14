@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom';
-import { MapPin, Clock, Briefcase, UtensilsCrossed, Wine, Waves, Coffee, PartyPopper, ConciergeBell, Crown, Soup } from 'lucide-react';
+import { MapPin, Clock, Briefcase } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import useLanguage from '@/lib/useLanguage';
 import { formatSalary } from '@/lib/i18n';
+import JobImage from './JobImage';
+import FavoriteButton from './FavoriteButton';
 import moment from 'moment';
 
 const typeLabels = {
@@ -15,47 +17,16 @@ const catLabels = {
     el: { fine_dining: 'Fine Dining', wine_expert: 'Οινολόγος / Sommelier', pool_beach: 'Pool & Beach', breakfast: 'Σερβιτόρος Πρωινού', banquet: 'Σερβιτόρος Δεξιώσεων', room_service: 'Room Service', head_waiter: 'Αρχισερβιτόρος', catering: 'Catering' }
 };
 
-const catIcons = {
-    fine_dining: UtensilsCrossed, wine_expert: Wine, pool_beach: Waves, breakfast: Coffee,
-    banquet: PartyPopper, room_service: ConciergeBell, head_waiter: Crown, catering: Soup,
-};
-
-function CardImage({ job, islands }) {
-    const { lang } = useLanguage();
-
-    if (job.photo_url) {
-        return <img src={job.photo_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />;
-    }
-
-    const outline = islands?.find(i => job.location?.toLowerCase().includes(i.name.toLowerCase()))?.outline_url;
-
-    if (outline) {
-        return (
-            <div className="w-full h-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #1d6fa8 0%, #38d4f5 100%)' }}>
-                <img src={outline} alt="" className="h-3/4 max-w-[70%] object-contain opacity-35 group-hover:opacity-50 transition-opacity duration-300"
-                    style={{ filter: 'brightness(0) invert(1)' }} />
-            </div>
-        );
-    }
-
-    const Icon = catIcons[job.category] || Briefcase;
-    return (
-        <div className="w-full h-full flex flex-col items-center justify-center gap-2" style={{ background: 'linear-gradient(135deg, hsl(205 78% 32%) 0%, hsl(205 70% 48%) 100%)' }}>
-            <Icon className="w-12 h-12 text-white/40 group-hover:text-white/60 transition-colors duration-300" />
-            <span className="text-xs font-medium text-white/50">{catLabels[lang]?.[job.category] || job.category}</span>
-        </div>
-    );
-}
-
-export default function JobCard({ job, islands }) {
+export default function JobCard({ job, islands, showFavorite = true }) {
     const { lang } = useLanguage();
 
     return (
         <Link to={`/jobs/${job.id}`} className="block group">
             <div className="bg-card rounded-2xl border border-border/50 overflow-hidden hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 hover:-translate-y-0.5">
                 {/* Photo */}
-                <div className="h-40 overflow-hidden">
-                    <CardImage job={job} islands={islands} />
+                <div className="relative h-40 overflow-hidden">
+                    <JobImage job={job} islands={islands} interactive />
+                    {showFavorite && <FavoriteButton kind="job" id={job.id} className="absolute top-2 right-2" />}
                 </div>
 
                 {/* Details */}
@@ -90,7 +61,7 @@ export default function JobCard({ job, islands }) {
                         {job.salary_amount ? (
                             <span className="text-sm font-semibold text-primary">{formatSalary(job.salary_amount, job.salary_period, lang)}</span>
                         ) : <span />}
-                        <span className="text-xs text-muted-foreground">{moment(job.created_date).fromNow()}</span>
+                        <span className="text-xs text-muted-foreground">{moment(job.created_at).fromNow()}</span>
                     </div>
                 </div>
             </div>

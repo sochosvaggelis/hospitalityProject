@@ -8,8 +8,16 @@ import { api } from '@/lib/api';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import GuestView from '@/lib/GuestView';
+import UserFavorites from './UserFavorites';
 
 export default function Favorites() {
+    const { me, isLoading } = useAuth();
+    if (isLoading) return <div className="flex justify-center py-32"><div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" /></div>;
+    // Hotels see saved applicants; everyone else (job seekers / guests) sees saved hotels & jobs.
+    return me?.role === 'hotel' ? <HotelFavorites /> : <UserFavorites />;
+}
+
+function HotelFavorites() {
     const { lang } = useLanguage();
     const navigate = useNavigate();
     const { me, isLoading: authLoading } = useAuth();

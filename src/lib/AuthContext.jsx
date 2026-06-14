@@ -37,6 +37,7 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     const loadProfile = async (token) => {
+        setIsLoading(true);
         try {
             const data = await fetchProfile(token);
             setProfile(data);

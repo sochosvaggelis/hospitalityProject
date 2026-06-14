@@ -18,12 +18,12 @@ import Admin from './pages/Admin';
 import Favorites from './pages/Favorites';
 import HotelProfile from './pages/HotelProfile';
 import ScrollToTop from './lib/ScrollToTop';
-import ProtectedRoute from './lib/ProtectedRoute';
 import Login from './pages/Login';
 import ResetPassword from './pages/ResetPassword';
 import Terms from './pages/Terms';
 import Privacy from './pages/Privacy';
 import RoleSelector from './components/RoleSelector';
+import AppIntro from './components/AppIntro';
 
 const AppContent = () => {
     const { isLoading, isAuthenticated, me, refreshProfile } = useAuth();
@@ -33,6 +33,16 @@ const AppContent = () => {
     // itself switches to the recovery user's session from the link tokens.
     if (location.pathname === '/reset-password') {
         return <ResetPassword />;
+    }
+
+    // Dev-only preview: open /?preview=intro (or ?preview=intro&role=hotel) to view
+    // the onboarding without signing up. Stripped from production via import.meta.env.DEV.
+    if (import.meta.env.DEV) {
+        const params = new URLSearchParams(location.search);
+        if (params.get('preview') === 'intro') {
+            const role = params.get('role') === 'hotel' ? 'hotel' : 'server';
+            return <AppIntro role={role} onDone={() => { window.location.search = ''; }} />;
+        }
     }
 
     if (isLoading) {

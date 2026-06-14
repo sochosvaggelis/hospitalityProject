@@ -73,7 +73,7 @@ export default function Navbar() {
     ];
 
     if (isAuthenticated) {
-        if (role === 'hotel') navLinks.splice(3, 0, { to: '/favorites', label: 'Favourites', icon: Star });
+        if (role === 'hotel' || role === 'user') navLinks.splice(3, 0, { to: '/favorites', label: 'Favourites', icon: Star });
         if (role === 'admin') navLinks.push({ to: '/admin', label: 'Admin', icon: Shield });
     }
 

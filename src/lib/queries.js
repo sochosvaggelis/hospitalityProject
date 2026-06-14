@@ -23,3 +23,12 @@ export const useJobs = (filters = {}) =>
         staleTime: 1 * MINUTE,
         placeholderData: keepPreviousData,
     });
+
+// Job seeker's favourited hotel/job ref_ids — drives heart toggle state.
+export const useUserFavoriteIds = (enabled = true) =>
+    useQuery({
+        queryKey: ['user-favorite-ids'],
+        queryFn: api.getUserFavoriteIds,
+        staleTime: 1 * MINUTE,
+        enabled,
+    });

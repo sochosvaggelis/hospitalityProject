@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import useLanguage from '@/lib/useLanguage';
 import { formatSalary } from '@/lib/i18n';
 import { api } from '@/lib/api';
+import FavoriteButton from '@/components/FavoriteButton';
 import moment from 'moment';
 
 export default function HotelProfile() {
@@ -57,7 +58,10 @@ export default function HotelProfile() {
                             </div>
                         )}
                         <div className="flex-1 min-w-0">
-                            <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground">{name}</h1>
+                            <div className="flex items-start justify-between gap-3">
+                                <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground">{name}</h1>
+                                <FavoriteButton kind="hotel" id={hotelId} variant="button" className="flex-shrink-0" />
+                            </div>
 
                             {/* Star rating */}
                             {hotel.hotel_stars && (

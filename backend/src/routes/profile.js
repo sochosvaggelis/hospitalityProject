@@ -93,7 +93,8 @@ router.post('/avatar', authenticate, upload.single('avatar'), async (req, res) =
   const { data: { publicUrl } } = supabase.storage.from('hospitalityBucket').getPublicUrl(path);
   // Bust browser/CDN cache: the storage path is reused, so vary the URL each upload
   const versionedUrl = `${publicUrl}?v=${Date.now()}`;
-  const { data, error } = await supabase.from('profiles').update({ avatar_url: versionedUrl }).eq('id', req.user.id).select().single();
+  // Sync hotel_logo_url too, otherwise a placeholder there would shadow the uploaded image
+  const { data, error } = await supabase.from('profiles').update({ avatar_url: versionedUrl, hotel_logo_url: versionedUrl }).eq('id', req.user.id).select().single();
   if (error) return res.status(500).json({ error: error.message });
 
   // Keep hotel_logo in sync on existing job posts
@@ -109,7 +110,7 @@ router.delete('/avatar', authenticate, async (req, res) => {
   if (files?.length) {
     await supabase.storage.from('hospitalityBucket').remove(files.map(f => `avatars/${f.name}`));
   }
-  const { data, error } = await supabase.from('profiles').update({ avatar_url: null }).eq('id', req.user.id).select().single();
+  const { data, error } = await supabase.from('profiles').update({ avatar_url: null, hotel_logo_url: null }).eq('id', req.user.id).select().single();
   if (error) return res.status(500).json({ error: error.message });
   // Clear the logo on this hotel's job posts so they don't show a broken image
   await supabase.from('jobs').update({ hotel_logo: '' }).eq('hotel_user_id', req.user.id);

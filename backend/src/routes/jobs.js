@@ -63,7 +63,7 @@ router.get('/:id', async (req, res) => {
 
 // Hotel only: create job
 router.post('/', authenticate, requireRole('hotel'), async (req, res) => {
-  const { title, title_el, listing_lang, location, description, description_el, requirements, requirements_el, employment_type, salary_amount, salary_period, positions_available, start_date, category, benefits, benefits_el, photo_url, status } = req.body;
+  const { title, title_el, listing_lang, location, description, description_el, requirements, requirements_el, employment_type, salary_amount, salary_period, positions_available, start_date, category, benefits, benefits_el, photo_url, photo_position, status } = req.body;
   const { data: hotelProfile } = await supabase.from('profiles').select('lat, lng').eq('id', req.user.id).single();
   const { data, error } = await supabase.from('jobs').insert({
     title, title_el: title_el || null, listing_lang: listing_lang || 'en', location, description, requirements, employment_type,
@@ -71,6 +71,7 @@ router.post('/', authenticate, requireRole('hotel'), async (req, res) => {
     requirements_el: requirements_el || null,
     benefits_el: benefits_el || null,
     photo_url: photo_url || null,
+    photo_position: photo_url ? (photo_position || null) : null,
     salary_amount: salary_amount || null,
     salary_period: salary_period || null,
     positions_available, start_date, category, benefits,
@@ -97,9 +98,9 @@ router.put('/:id', authenticate, async (req, res) => {
     'title', 'title_el', 'listing_lang', 'location',
     'description', 'description_el', 'requirements', 'requirements_el', 'benefits', 'benefits_el',
     'employment_type', 'salary_amount', 'salary_period',
-    'positions_available', 'start_date', 'category', 'status', 'photo_url',
+    'positions_available', 'start_date', 'category', 'status', 'photo_url', 'photo_position',
   ];
-  const NULLABLE_FIELDS = ['title_el', 'description_el', 'requirements_el', 'benefits_el', 'salary_amount', 'salary_period', 'photo_url'];
+  const NULLABLE_FIELDS = ['title_el', 'description_el', 'requirements_el', 'benefits_el', 'salary_amount', 'salary_period', 'photo_url', 'photo_position'];
   const updates = {};
   for (const key of ALLOWED_FIELDS) {
     if (key in req.body) updates[key] = NULLABLE_FIELDS.includes(key) ? (req.body[key] || null) : req.body[key];

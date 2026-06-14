@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import GuestView from '@/lib/GuestView';
+import JobPhotoField from '@/components/JobPhotoField';
 import useLanguage from '@/lib/useLanguage';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
@@ -42,6 +43,7 @@ export default function Dashboard() {
     const [profileModal, setProfileModal] = useState(null); // { loading, data }
     const [editModal, setEditModal] = useState(null); // { job, form, saving }
     const [deleteConfirm, setDeleteConfirm] = useState(null); // jobId
+    const [withdrawConfirm, setWithdrawConfirm] = useState(null); // applicationId
 
     // Feature: Sorting
     const [sortBy, setSortBy] = useState('newest'); // 'newest' | 'oldest' | 'most_apps'
@@ -203,7 +205,9 @@ export default function Dashboard() {
     };
 
     const handleOpenEdit = (job) => {
-        setEditModal({ job, saving: false, form: {
+        setEditModal({ job, saving: false, photoFile: null, photoPreview: null, form: {
+            photo_url: job.photo_url || null,
+            photo_position: job.photo_position || '50% 50%',
             title: job.title || '',
             title_el: job.title_el || '',
             listing_lang: job.listing_lang || 'en',
@@ -224,12 +228,35 @@ export default function Dashboard() {
         }});
     };
 
+    const handleWithdraw = async () => {
+        const appId = withdrawConfirm;
+        setWithdrawConfirm(null);
+        try {
+            await api.updateApplicationStatus(appId, 'withdrawn');
+            setApplications(prev => prev.map(a => a.id === appId ? { ...a, status: 'withdrawn' } : a));
+            toast.success(lang === 'el' ? 'Η αίτηση αποσύρθηκε' : 'Application withdrawn');
+        } catch (e) {
+            toast.error(e.message);
+        }
+    };
+
     const handleSaveEdit = async () => {
         if (!editModal) return;
         setEditModal(m => ({ ...m, saving: true }));
-        const updated = await api.updateJob(editModal.job.id, editModal.form);
-        setJobs(prev => prev.map(j => j.id === updated.id ? updated : j));
-        setEditModal(null);
+        try {
+            const form = { ...editModal.form };
+            if (editModal.photoFile) {
+                const uploaded = await api.uploadJobPhoto(editModal.photoFile);
+                form.photo_url = uploaded.url;
+            }
+            const updated = await api.updateJob(editModal.job.id, form);
+            setJobs(prev => prev.map(j => j.id === updated.id ? updated : j));
+            if (editModal.photoPreview) URL.revokeObjectURL(editModal.photoPreview);
+            setEditModal(null);
+        } catch (e) {
+            toast.error(e.message);
+            setEditModal(m => ({ ...m, saving: false }));
+        }
     };
 
     const handleDeleteJob = async () => {
@@ -611,7 +638,15 @@ export default function Dashboard() {
                                             {app.cover_letter && <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{app.cover_letter}</p>}
                                             <p className="text-xs text-muted-foreground mt-2">{moment(app.created_at).fromNow()}</p>
                                         </div>
-                                        <Badge className={`${statusColors[app.status]} border-0 rounded-lg`}>{t(`status_${app.status}`)}</Badge>
+                                        <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                                            <Badge className={`${statusColors[app.status]} border-0 rounded-lg`}>{t(`status_${app.status}`)}</Badge>
+                                            {['pending', 'reviewed'].includes(app.status) && (
+                                                <button onClick={() => setWithdrawConfirm(app.id)}
+                                                    className="text-xs font-medium text-muted-foreground hover:text-red-500 transition-colors">
+                                                    {lang === 'el' ? 'Απόσυρση' : 'Withdraw'}
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -629,6 +664,17 @@ export default function Dashboard() {
                 </DialogHeader>
                 {editModal && (
                     <div className="space-y-4 mt-2">
+                        <div>
+                            <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Φωτογραφία' : 'Photo'}</label>
+                            <JobPhotoField
+                                src={editModal.photoPreview || editModal.form.photo_url}
+                                position={editModal.form.photo_position}
+                                onFile={file => setEditModal(m => ({ ...m, photoFile: file, photoPreview: URL.createObjectURL(file), form: { ...m.form, photo_url: null } }))}
+                                onPositionChange={pos => setEditModal(m => ({ ...m, form: { ...m.form, photo_position: pos } }))}
+                                onRemove={() => setEditModal(m => { if (m.photoPreview) URL.revokeObjectURL(m.photoPreview); return { ...m, photoFile: null, photoPreview: null, form: { ...m.form, photo_url: null, photo_position: '50% 50%' } }; })}
+                                lang={lang}
+                            />
+                        </div>
                         <div>
                             <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Τίτλος *' : 'Title *'}</label>
                             <Input className="rounded-xl" value={editModal.form.title} onChange={e => setEditModal(m => ({ ...m, form: { ...m.form, title: e.target.value } }))} />
@@ -746,6 +792,24 @@ export default function Dashboard() {
                 <DialogFooter className="gap-2 mt-4">
                     <Button variant="outline" className="rounded-xl" onClick={() => setDeleteConfirm(null)}>{lang === 'el' ? 'Ακύρωση' : 'Cancel'}</Button>
                     <Button variant="destructive" className="rounded-xl" onClick={handleDeleteJob}>{lang === 'el' ? 'Διαγραφή' : 'Delete'}</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
+        {/* Withdraw confirmation */}
+        <Dialog open={!!withdrawConfirm} onOpenChange={open => !open && setWithdrawConfirm(null)}>
+            <DialogContent className="rounded-2xl max-w-sm">
+                <DialogHeader>
+                    <DialogTitle className="font-display">{lang === 'el' ? 'Απόσυρση αίτησης;' : 'Withdraw application?'}</DialogTitle>
+                </DialogHeader>
+                <p className="text-sm text-muted-foreground mt-1">
+                    {lang === 'el'
+                        ? 'Το ξενοδοχείο δεν θα βλέπει πια την αίτησή σου. Μπορείς να ξανακάνεις αίτηση αργότερα.'
+                        : 'The hotel will no longer see your application. You can apply again later.'}
+                </p>
+                <DialogFooter className="gap-2 mt-4">
+                    <Button variant="outline" className="rounded-xl" onClick={() => setWithdrawConfirm(null)}>{lang === 'el' ? 'Ακύρωση' : 'Cancel'}</Button>
+                    <Button variant="destructive" className="rounded-xl" onClick={handleWithdraw}>{lang === 'el' ? 'Απόσυρση' : 'Withdraw'}</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

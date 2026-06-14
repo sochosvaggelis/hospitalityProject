@@ -103,7 +103,11 @@ router.patch('/:id/status', authenticate, async (req, res) => {
     .eq('id', req.params.id)
     .single();
   if (!app) return res.status(404).json({ error: 'Application not found' });
-  if (app.hotel_user_id !== req.user.id) return res.status(403).json({ error: 'Forbidden' });
+
+  const isHotelOwner = app.hotel_user_id === req.user.id;
+  // Applicants may only withdraw their own application; hotels manage all other statuses.
+  const isApplicantWithdrawing = app.applicant_email === req.user.email && status === 'withdrawn';
+  if (!isHotelOwner && !isApplicantWithdrawing) return res.status(403).json({ error: 'Forbidden' });
 
   const { data, error } = await supabase.from('applications').update({ status }).eq('id', req.params.id).select().single();
   if (error) return res.status(500).json({ error: error.message });

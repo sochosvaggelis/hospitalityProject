@@ -9,7 +9,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { toast } from 'sonner';
 import useLanguage from '@/lib/useLanguage';
 import { api } from '@/lib/api';
-import { useEmploymentTypes } from '@/lib/queries';
+import { useEmploymentTypes, useIslands } from '@/lib/queries';
+import JobImage from '@/components/JobImage';
+import FavoriteButton from '@/components/FavoriteButton';
 import { useAuth } from '@/lib/AuthContext';
 import moment from 'moment';
 
@@ -28,6 +30,7 @@ export default function JobDetail() {
     const [alreadyApplied, setAlreadyApplied] = useState(false);
     const [attachResume, setAttachResume] = useState(true);
     const { data: empsData } = useEmploymentTypes();
+    const { data: islands } = useIslands();
     const empMap = useMemo(() => Object.fromEntries((empsData || []).map(e => [e.key, { en: e.label_en, el: e.label_el }])), [empsData]);
 
     useEffect(() => {
@@ -73,27 +76,19 @@ export default function JobDetail() {
             </button>
 
             <div className="bg-card rounded-2xl border border-border/50 overflow-hidden">
-                {job.photo_url && (
-                    <div className="relative h-48 sm:h-64">
-                        <img src={job.photo_url} alt="" className="w-full h-full object-cover" />
-                        {job.hotel_logo ? (
-                            <img src={job.hotel_logo} alt="" className="absolute bottom-0 left-6 sm:left-8 translate-y-1/2 w-16 h-16 rounded-2xl object-cover border-2 border-card shadow-md" />
-                        ) : (
-                            <div className="absolute bottom-0 left-6 sm:left-8 translate-y-1/2 w-16 h-16 rounded-2xl bg-primary border-2 border-card shadow-md flex items-center justify-center">
-                                <Briefcase className="w-7 h-7 text-primary-foreground" />
-                            </div>
-                        )}
-                    </div>
-                )}
-                <div className={`p-6 sm:p-8 ${job.photo_url ? 'pt-12 sm:pt-14' : ''}`}>
-                <div className="flex items-start gap-4 mb-6">
-                    {!job.photo_url && (job.hotel_logo ? (
-                        <img src={job.hotel_logo} alt="" className="w-16 h-16 rounded-2xl object-cover flex-shrink-0" />
+                <div className="relative h-48 sm:h-64">
+                    <JobImage job={job} islands={islands} />
+                    <FavoriteButton kind="job" id={job.id} className="absolute top-3 right-3" />
+                    {job.hotel_logo ? (
+                        <img src={job.hotel_logo} alt="" className="absolute bottom-0 left-6 sm:left-8 translate-y-1/2 w-16 h-16 rounded-2xl object-cover border-2 border-card shadow-md" />
                     ) : (
-                        <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                            <Briefcase className="w-7 h-7 text-primary" />
+                        <div className="absolute bottom-0 left-6 sm:left-8 translate-y-1/2 w-16 h-16 rounded-2xl bg-primary border-2 border-card shadow-md flex items-center justify-center">
+                            <Briefcase className="w-7 h-7 text-primary-foreground" />
                         </div>
-                    ))}
+                    )}
+                </div>
+                <div className="p-6 sm:p-8 pt-12 sm:pt-14">
+                <div className="flex items-start gap-4 mb-6">
                     <div className="flex-1">
                         <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground">{lang === 'el' && job.title_el ? job.title_el : job.title}</h1>
                         <Link to={`/hotels/${job.hotel_user_id}`} className="text-lg text-muted-foreground hover:text-primary transition-colors mt-1 inline-block">
