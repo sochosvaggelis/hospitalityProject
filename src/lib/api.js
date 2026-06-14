@@ -37,10 +37,12 @@ export const api = {
     employmentTypes: () => get('/api/employment-types'),
 
     // Jobs
-    getJobs: (filters = {}) => {
-        const params = new URLSearchParams(filters).toString();
-        return get(`/api/jobs${params ? `?${params}` : ''}`);
+    getJobs: (params = {}) => {
+        const qs = new URLSearchParams(params).toString();
+        return get(`/api/jobs${qs ? `?${qs}` : ''}`);
     },
+    getJobStats: () => get('/api/jobs/stats'),
+    getIslandJobs: (location) => get(`/api/jobs/map?location=${encodeURIComponent(location)}`),
     getJob: (id) => get(`/api/jobs/${id}`),
     getMyJobs: () => get('/api/jobs/mine'),
     createJob: (body) => post('/api/jobs', body),

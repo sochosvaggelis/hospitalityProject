@@ -1,5 +1,7 @@
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, keepPreviousData } from '@tanstack/react-query';
 import { api } from './api';
+
+export const JOBS_PAGE_SIZE = 12;
 
 const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
@@ -14,15 +16,21 @@ export const useCategories = () =>
 export const useEmploymentTypes = () =>
     useQuery({ queryKey: ['employment-types'], queryFn: api.employmentTypes, staleTime: 6 * HOUR });
 
-// Job listings: short cache + background refresh; previous results stay
-// visible while a filter change fetches, so the grid never flashes empty
-export const useJobs = (filters = {}) =>
-    useQuery({
+// Paginated job listings: the server filters/searches and returns one page at a
+// time; React Query stitches the pages together for infinite scroll.
+export const useInfiniteJobs = (filters = {}) =>
+    useInfiniteQuery({
         queryKey: ['jobs', filters],
-        queryFn: () => api.getJobs(filters),
+        queryFn: ({ pageParam = 1 }) => api.getJobs({ ...filters, page: pageParam, limit: JOBS_PAGE_SIZE }),
+        initialPageParam: 1,
+        getNextPageParam: (last) => (last.hasMore ? last.page + 1 : undefined),
         staleTime: 1 * MINUTE,
         placeholderData: keepPreviousData,
     });
+
+// Aggregate counts (total + per island) for the home page, computed server-side.
+export const useJobStats = () =>
+    useQuery({ queryKey: ['job-stats'], queryFn: api.getJobStats, staleTime: 1 * MINUTE });
 
 // Job seeker's favourited hotel/job ref_ids — drives heart toggle state.
 export const useUserFavoriteIds = (enabled = true) =>

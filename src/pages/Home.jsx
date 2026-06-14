@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import useLanguage from '@/lib/useLanguage';
 import { tIsland } from '@/lib/i18n';
-import { useJobs, useIslands } from '@/lib/queries';
+import { useJobStats, useIslands } from '@/lib/queries';
 import IslandMapModal from '@/components/IslandMapModal';
 
 
@@ -31,11 +31,10 @@ function useCountUp(target, duration = 1200) {
 
 export default function Home() {
     const { t, lang } = useLanguage();
-    const { data: jobsData, isLoading: jobsLoading } = useJobs();
+    const { data: stats, isLoading: statsLoading } = useJobStats();
     const { data: islandsData, isLoading: islandsLoading } = useIslands();
-    const allJobs = jobsData || [];
     const islands = islandsData || [];
-    const loading = jobsLoading || islandsLoading;
+    const loading = statsLoading || islandsLoading;
     const [search, setSearch] = useState('');
     const [selectedIsland, setSelectedIsland] = useState(null);
     // Hold the count-up until just before the stats block finishes its fade-up (0.5s delay + 0.7s animation)
@@ -47,12 +46,11 @@ export default function Home() {
     }, []);
 
     const countsReady = heroDone && !loading;
-    const animatedJobs = useCountUp(countsReady ? allJobs.length : 0);
+    const animatedJobs = useCountUp(countsReady ? (stats?.total || 0) : 0);
     const animatedIslands = useCountUp(countsReady ? islands.length : 0);
     const animatedCategories = useCountUp(countsReady ? 8 : 0);
 
-    const getIslandJobCount = (islandName) =>
-        allJobs.filter(j => j.location?.toLowerCase().includes(islandName.toLowerCase())).length;
+    const getIslandJobCount = (islandName) => stats?.byIsland?.[islandName] || 0;
 
     const handleSearch = () => {
         if (search.trim()) window.location.href = `${import.meta.env.BASE_URL}jobs?search=${encodeURIComponent(search)}`;
@@ -164,7 +162,6 @@ export default function Home() {
             {selectedIsland && (
                 <IslandMapModal
                     island={selectedIsland}
-                    jobs={allJobs.filter(j => j.location?.toLowerCase().includes(selectedIsland.name.toLowerCase()) && j.lat && j.lng)}
                     onClose={() => setSelectedIsland(null)}
                 />
             )}

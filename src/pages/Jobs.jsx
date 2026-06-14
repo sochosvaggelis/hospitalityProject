@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Search, SlidersHorizontal, X, ChevronDown } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -6,11 +6,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import JobCard from '@/components/JobCard';
 import useLanguage from '@/lib/useLanguage';
-import { useJobs, useIslands, useCategories, useEmploymentTypes } from '@/lib/queries';
+import { useInfiniteJobs, useIslands, useCategories, useEmploymentTypes } from '@/lib/queries';
 
 export default function Jobs() {
     const { t, lang } = useLanguage();
     const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [island, setIsland] = useState('all');
     const [category, setCategory] = useState('all');
     const [empType, setEmpType] = useState('all');
@@ -24,6 +25,12 @@ export default function Jobs() {
         if (params.get('island')) setIsland(params.get('island'));
     }, []);
 
+    // Debounce the search box so we don't fire a request on every keystroke.
+    useEffect(() => {
+        const id = setTimeout(() => setDebouncedSearch(search), 350);
+        return () => clearTimeout(id);
+    }, [search]);
+
     const { data: catsData } = useCategories();
     const { data: empsData } = useEmploymentTypes();
     const { data: islandData = [] } = useIslands();
@@ -34,20 +41,33 @@ export default function Jobs() {
     const catMap = useMemo(() => Object.fromEntries((catsData || []).map(c => [c.key, { en: c.label_en, el: c.label_el }])), [catsData]);
     const empMap = useMemo(() => Object.fromEntries((empsData || []).map(e => [e.key, { en: e.label_en, el: e.label_el }])), [empsData]);
 
-    const filters = {};
-    if (category !== 'all') filters.category = category;
-    if (empType !== 'all') filters.employment_type = empType;
-    if (listingLang !== 'all') filters.listing_lang = listingLang;
-    const { data: jobsData, isLoading: loading } = useJobs(filters);
-    const jobs = jobsData || [];
+    // Every filter (incl. search & island) is sent to the server; nothing is
+    // filtered client-side, and results arrive one page at a time.
+    const filters = useMemo(() => {
+        const f = {};
+        if (category !== 'all') f.category = category;
+        if (empType !== 'all') f.employment_type = empType;
+        if (listingLang !== 'all') f.listing_lang = listingLang;
+        if (island !== 'all') f.location = island;
+        if (debouncedSearch.trim()) f.search = debouncedSearch.trim();
+        return f;
+    }, [category, empType, listingLang, island, debouncedSearch]);
 
-    const filteredJobs = jobs.filter(job => {
-        if (island !== 'all' && !job.location?.toLowerCase().includes(island.toLowerCase())) return false;
-        if (!search.trim()) return true;
-        const s = search.toLowerCase();
-        return job.title?.toLowerCase().includes(s) || job.hotel_name?.toLowerCase().includes(s) || job.location?.toLowerCase().includes(s);
-    });
+    const { data, isLoading: loading, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteJobs(filters);
+    const jobs = useMemo(() => (data?.pages || []).flatMap(p => p.jobs), [data]);
+    const total = data?.pages?.[0]?.total ?? 0;
 
+    // Auto-load the next page when the sentinel scrolls into view.
+    const sentinelRef = useRef(null);
+    useEffect(() => {
+        const el = sentinelRef.current;
+        if (!el || !hasNextPage) return;
+        const obs = new IntersectionObserver(([entry]) => {
+            if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) fetchNextPage();
+        }, { rootMargin: '400px' });
+        obs.observe(el);
+        return () => obs.disconnect();
+    }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
     const allCategories = ['all', ...categories];
     const allEmpTypes = ['all', ...empTypes];
@@ -130,12 +150,30 @@ export default function Jobs() {
 
                 {loading ? (
                     <div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" /></div>
-                ) : filteredJobs.length === 0 ? (
+                ) : jobs.length === 0 ? (
                     <p className="text-center text-muted-foreground py-16">{t('jobs_no_results')}</p>
                 ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {filteredJobs.map(job => <JobCard key={job.id} job={job} islands={islandData} showFavorite={false} />)}
-                    </div>
+                    <>
+                        <p className="text-sm text-muted-foreground mb-4">
+                            {total} {lang === 'el' ? (total === 1 ? 'αγγελία' : 'αγγελίες') : (total === 1 ? 'job' : 'jobs')}
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {jobs.map(job => <JobCard key={job.id} job={job} islands={islandData} showFavorite={false} />)}
+                        </div>
+
+                        {/* Infinite-scroll sentinel + manual fallback */}
+                        <div ref={sentinelRef} className="h-px" />
+                        {isFetchingNextPage && (
+                            <div className="flex justify-center py-8"><div className="w-7 h-7 border-4 border-primary/20 border-t-primary rounded-full animate-spin" /></div>
+                        )}
+                        {hasNextPage && !isFetchingNextPage && (
+                            <div className="flex justify-center py-8">
+                                <Button variant="outline" className="rounded-xl" onClick={() => fetchNextPage()}>
+                                    {lang === 'el' ? 'Φόρτωση περισσότερων' : 'Load more'}
+                                </Button>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
         </div>

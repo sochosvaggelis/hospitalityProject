@@ -4,7 +4,7 @@ import supabase from '../lib/supabase.js';
 const router = Router();
 
 router.get('/islands', async (req, res) => {
-  const { data, error } = await supabase.from('islands').select('*').order('display_order');
+  const { data, error } = await supabase.from('islands').select('*').order('name');
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });

@@ -1,9 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import { Link } from 'react-router-dom';
 import L from 'leaflet';
 import useLanguage from '@/lib/useLanguage';
 import { tIsland } from '@/lib/i18n';
+import { api } from '@/lib/api';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -39,8 +40,16 @@ function makePinIcon(count) {
     });
 }
 
-export default function IslandMapModal({ island, jobs = [], onClose }) {
+export default function IslandMapModal({ island, onClose }) {
     const { lang } = useLanguage();
+    const [jobs, setJobs] = useState([]);
+
+    // Fetch only this island's active jobs (with coordinates) from the server.
+    useEffect(() => {
+        let active = true;
+        api.getIslandJobs(island.name).then(data => { if (active) setJobs(data || []); }).catch(() => {});
+        return () => { active = false; };
+    }, [island.name]);
     const coords = ISLAND_COORDS[island.name] ?? { center: [37.9838, 23.7275], zoom: 7 };
     const { center, zoom } = coords;
 

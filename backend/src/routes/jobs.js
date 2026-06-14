@@ -22,29 +22,74 @@ router.post('/photo', authenticate, requireRole('hotel'), upload.single('photo')
   res.json({ url: publicUrl });
 });
 
-// Public: list active jobs with optional filters
-router.get('/', async (req, res) => {
-  const { category, employment_type, location, listing_lang } = req.query;
-  let query = supabase.from('jobs').select('*').eq('status', 'active').order('created_at', { ascending: false }).limit(50);
+const todayStr = () => new Date().toISOString().slice(0, 10);
+
+// Applies the public visibility rules + all list filters to a query builder.
+// Expiry: hide listings whose ISO start_date has passed. null and legacy
+// free-text dates (letter-leading) sort >= today, so they stay visible.
+function applyJobFilters(query, { category, employment_type, location, listing_lang, search }) {
+  query = query.eq('status', 'active').or(`start_date.is.null,start_date.gte.${todayStr()}`);
   if (category && category !== 'all') query = query.eq('category', category);
   if (employment_type && employment_type !== 'all') query = query.eq('employment_type', employment_type);
   if (location && location !== 'all') query = query.ilike('location', `%${location}%`);
   if (listing_lang && listing_lang !== 'all') {
-    if (listing_lang === 'both') query = query.eq('listing_lang', 'both');
-    else query = query.in('listing_lang', [listing_lang, 'both']);
+    query = listing_lang === 'both' ? query.eq('listing_lang', 'both') : query.in('listing_lang', [listing_lang, 'both']);
   }
+  if (search && search.trim()) {
+    const term = search.trim().replace(/[,%()*]/g, ' ');
+    query = query.or(`title.ilike.%${term}%,title_el.ilike.%${term}%,hotel_name.ilike.%${term}%,location.ilike.%${term}%`);
+  }
+  return query;
+}
+
+// Public: paginated list of active jobs with server-side filters & search.
+router.get('/', async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(48, Math.max(1, parseInt(req.query.limit, 10) || 12));
+  const offset = (page - 1) * limit;
+
+  let query = applyJobFilters(
+    supabase.from('jobs').select('*', { count: 'exact' }),
+    req.query,
+  ).order('created_at', { ascending: false }).range(offset, offset + limit - 1);
+
+  const { data, count, error } = await query;
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({
+    jobs: data || [],
+    total: count ?? 0,
+    page,
+    limit,
+    hasMore: offset + (data?.length || 0) < (count ?? 0),
+  });
+});
+
+// Public: aggregate counts for the home page (total + per island). Computed
+// server-side so the client never loads every job just to count them.
+router.get('/stats', async (req, res) => {
+  const countActive = (loc) => {
+    let q = supabase.from('jobs').select('*', { count: 'exact', head: true })
+      .eq('status', 'active').or(`start_date.is.null,start_date.gte.${todayStr()}`);
+    if (loc) q = q.ilike('location', `%${loc}%`);
+    return q;
+  };
+  const { data: islands } = await supabase.from('islands').select('name');
+  const [{ count: total }, perIsland] = await Promise.all([
+    countActive(),
+    Promise.all((islands || []).map(async i => [i.name, (await countActive(i.name)).count || 0])),
+  ]);
+  res.json({ total: total || 0, byIsland: Object.fromEntries(perIsland) });
+});
+
+// Public: lightweight markers for the island map (active jobs with coordinates).
+router.get('/map', async (req, res) => {
+  let query = applyJobFilters(
+    supabase.from('jobs').select('id, title, title_el, hotel_user_id, hotel_name, location, lat, lng'),
+    req.query,
+  ).not('lat', 'is', null).order('created_at', { ascending: false }).limit(2000);
   const { data, error } = await query;
   if (error) return res.status(500).json({ error: error.message });
-  // Hide listings whose start date has already passed. Legacy free-text dates
-  // (e.g. "June 2026") aren't parseable and are treated as no-expiry.
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const visible = (data || []).filter(j => {
-    if (!j.start_date) return true;
-    const isIsoDate = /^\d{4}-\d{2}-\d{2}$/.test(j.start_date);
-    if (!isIsoDate) return true;
-    return j.start_date >= todayStr;
-  });
-  res.json(visible);
+  res.json(data || []);
 });
 
 // Hotel: own jobs (all statuses)
