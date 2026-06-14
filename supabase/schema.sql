@@ -55,6 +55,7 @@ create table public.jobs (
   salary_range text,
   positions_available integer default 1,
   start_date text,
+  end_date text,
   status text default 'active' check (status in ('active','closed','draft')),
   category text not null check (category in ('fine_dining','wine_expert','pool_beach','breakfast','banquet','room_service','head_waiter','catering')),
   benefits text,

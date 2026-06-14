@@ -16,6 +16,9 @@ export const useCategories = () =>
 export const useEmploymentTypes = () =>
     useQuery({ queryKey: ['employment-types'], queryFn: api.employmentTypes, staleTime: 6 * HOUR });
 
+export const useVenueTypes = () =>
+    useQuery({ queryKey: ['venue-types'], queryFn: api.venueTypes, staleTime: 6 * HOUR });
+
 // Paginated job listings: the server filters/searches and returns one page at a
 // time; React Query stitches the pages together for infinite scroll.
 export const useInfiniteJobs = (filters = {}) =>
@@ -31,6 +34,11 @@ export const useInfiniteJobs = (filters = {}) =>
 // Aggregate counts (total + per island) for the home page, computed server-side.
 export const useJobStats = () =>
     useQuery({ queryKey: ['job-stats'], queryFn: api.getJobStats, staleTime: 1 * MINUTE });
+
+// The hotel account's own venues (shops/properties). Cached briefly so the
+// PostJob selector and the Profile manager stay in sync after edits.
+export const useMyVenues = (enabled = true) =>
+    useQuery({ queryKey: ['my-venues'], queryFn: api.getMyVenues, staleTime: 1 * MINUTE, enabled });
 
 // Job seeker's favourited hotel/job ref_ids — drives heart toggle state.
 export const useUserFavoriteIds = (enabled = true) =>

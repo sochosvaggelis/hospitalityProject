@@ -1,6 +1,7 @@
 import { MapPin, Clock, Users, Briefcase, Calendar, DollarSign, Award, CheckCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { formatSalary } from '@/lib/i18n';
+import { monthRange } from '@/lib/utils';
 import JobImage from './JobImage';
 
 // A non-interactive replica of the public listing, rendered from the PostJob form
@@ -37,7 +38,8 @@ export default function JobPreviewCard({ form, photoPreview, lang, hotelName, ho
                     {form.employment_type && <Badge variant="outline" className="gap-1 rounded-lg py-1.5 px-3"><Clock className="w-3.5 h-3.5" />{empLabel}</Badge>}
                     {form.positions_available > 0 && <Badge variant="outline" className="gap-1 rounded-lg py-1.5 px-3"><Users className="w-3.5 h-3.5" />{form.positions_available} {el ? 'θέσεις' : 'positions'}</Badge>}
                     {form.salary_amount && <Badge variant="secondary" className="gap-1 rounded-lg py-1.5 px-3 bg-primary/10 text-primary border-0"><DollarSign className="w-3.5 h-3.5" />{formatSalary(form.salary_amount, form.salary_period, lang)}</Badge>}
-                    {form.start_date && <Badge variant="outline" className="gap-1 rounded-lg py-1.5 px-3"><Calendar className="w-3.5 h-3.5" />{form.start_date}</Badge>}
+                    {form.salary_negotiable && <Badge variant="outline" className="rounded-lg py-1.5 px-3">{el ? 'Συζητήσιμη τιμή' : 'Negotiable'}</Badge>}
+                    {(form.start_date || form.end_date) && <Badge variant="outline" className="gap-1 rounded-lg py-1.5 px-3"><Calendar className="w-3.5 h-3.5" />{monthRange(form.start_date, form.end_date, lang)}</Badge>}
                 </div>
 
                 <div className="space-y-5">

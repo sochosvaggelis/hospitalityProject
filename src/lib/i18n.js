@@ -32,7 +32,7 @@ const translations = {
         nav_messages: "Messages",
         nav_profile: "Profile",
         nav_login: "Sign In",
-        nav_post_job: "Post a Job",
+        nav_post_job: "Post Job",
         nav_admin: "Admin",
 
         // Home

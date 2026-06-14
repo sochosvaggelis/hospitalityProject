@@ -59,7 +59,12 @@ export default function JobCard({ job, islands, showFavorite = true }) {
 
                     <div className="mt-3 flex items-center justify-between">
                         {job.salary_amount ? (
-                            <span className="text-sm font-semibold text-primary">{formatSalary(job.salary_amount, job.salary_period, lang)}</span>
+                            <span className="text-sm font-semibold text-primary">
+                                {formatSalary(job.salary_amount, job.salary_period, lang)}
+                                {job.salary_negotiable && <span className="font-normal text-muted-foreground"> · {lang === 'el' ? 'συζητήσιμη' : 'negotiable'}</span>}
+                            </span>
+                        ) : job.salary_negotiable ? (
+                            <span className="text-sm text-muted-foreground">{lang === 'el' ? 'Συζητήσιμη τιμή' : 'Negotiable'}</span>
                         ) : <span />}
                         <span className="text-xs text-muted-foreground">{moment(job.created_at).fromNow()}</span>
                     </div>
