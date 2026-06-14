@@ -12,10 +12,14 @@ function parseRecoveryTokens() {
     if (typeof window === 'undefined') return null;
     const params = new URLSearchParams(window.location.hash.replace(/^#/, ''));
     if (params.get('type') === 'recovery' && params.get('access_token')) {
-        return {
+        const tokens = {
             access_token: params.get('access_token'),
             refresh_token: params.get('refresh_token'),
         };
+        // Strip the tokens from the visible URL / browser history immediately after
+        // capturing them, so the recovery secret doesn't linger where it could leak.
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        return tokens;
     }
     return null;
 }
