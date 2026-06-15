@@ -22,7 +22,7 @@ export default function VenueManager({ lang }) {
     const edit = (v) => navigate(`/venues/${v.id}/edit`);
     const addNew = () => navigate('/venues/new/edit');
     const addJob = (v) => navigate(`/post-job?venue=${v.id}`);
-    const viewPublic = (v) => window.open(`/venues/${v.id}`, '_blank', 'noopener');
+    const viewPublic = (v) => window.open(`${import.meta.env.BASE_URL}venues/${v.id}`, '_blank', 'noopener');
     const viewAllJobs = (v) => navigate(`/dashboard?venue=${v.id}`);
 
     return (
