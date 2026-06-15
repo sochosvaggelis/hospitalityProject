@@ -23,6 +23,7 @@ export default function VenueManager({ lang }) {
     const addNew = () => navigate('/venues/new/edit');
     const addJob = (v) => navigate(`/post-job?venue=${v.id}`);
     const viewPublic = (v) => window.open(`/venues/${v.id}`, '_blank', 'noopener');
+    const viewAllJobs = (v) => navigate(`/dashboard?venue=${v.id}`);
 
     return (
         <div className="space-y-4">
@@ -57,9 +58,10 @@ export default function VenueManager({ lang }) {
                                 </div>
                             </div>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1.5">
-                            <Briefcase className="w-3.5 h-3.5" />{jobCount(v.id)} {el ? 'αγγελίες' : 'jobs'}
-                        </p>
+                        <button type="button" onClick={() => viewAllJobs(v)}
+                            className="text-xs text-primary hover:underline mt-3 flex items-center gap-1.5 w-fit">
+                            <Briefcase className="w-3.5 h-3.5" />{el ? `Δες όλες τις αγγελίες (${jobCount(v.id)})` : `See all jobs (${jobCount(v.id)})`}
+                        </button>
                         <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-border/50">
                             <Button size="sm" variant="outline" className="rounded-xl gap-1.5" onClick={() => edit(v)}>
                                 <Pencil className="w-3.5 h-3.5" />{el ? 'Επεξεργασία' : 'Edit'}

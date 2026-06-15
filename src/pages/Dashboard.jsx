@@ -58,6 +58,13 @@ export default function Dashboard() {
     const { data: venues = [] } = useMyVenues(me?.role === 'hotel');
     const [venueFilter, setVenueFilter] = useState(''); // hotel "My jobs" is scoped to one venue
 
+    // Deep-link from a venue card ("See all jobs"): preselect the venue and show
+    // every listing regardless of status (empty statusFilter = all).
+    useEffect(() => {
+        const v = new URLSearchParams(location.search).get('venue');
+        if (v) { setVenueFilter(v); setStatusFilter(''); setSelectedJobId(null); }
+    }, [location.search]);
+
     // Feature: Sorting
     const [sortBy, setSortBy] = useState('newest'); // 'newest' | 'oldest' | 'most_apps'
 
@@ -372,6 +379,7 @@ export default function Dashboard() {
                         <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
                             <div className="flex gap-2 flex-wrap">
                                 {[
+                                    { key: '',         label: lang === 'el' ? 'Όλες' : 'All',     count: venueScopedJobs.length },
                                     { key: 'active',   label: lang === 'el' ? 'Ενεργές' : 'Active',  count: activeJobs },
                                     { key: 'closed',   label: lang === 'el' ? 'Κλειστές' : 'Closed', count: closedJobs },
                                     { key: 'draft',    label: lang === 'el' ? 'Πρόχειρα' : 'Drafts', count: draftJobs },
