@@ -14,9 +14,11 @@ import { useAuth } from '@/lib/AuthContext';
 import { useMyVenues, useVenueTypes, useIslands } from '@/lib/queries';
 import { api } from '@/lib/api';
 import { ISLAND_COORDS } from '@/lib/islandCoords';
+import VenuePreviewCard from '@/components/VenuePreviewCard';
 import { toast } from 'sonner';
 
-const blank = { name: '', type: '', location: '', lat: null, lng: null, logo_url: null, stars: null, website: '', description: '', phone: '', email: '' };
+const blank = { name: '', type: '', location: '', lat: null, lng: null, logo_url: null, stars: null, website: '', description: '', phone: '', email: '', photos: [] };
+const MAX_PHOTOS = 3;
 
 export default function VenueEdit() {
     const { venueId } = useParams();
@@ -35,6 +37,7 @@ export default function VenueEdit() {
     const [form, setForm] = useState(isNew ? blank : null);
     const [busy, setBusy] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [photoBusy, setPhotoBusy] = useState(false);
     const [justSaved, setJustSaved] = useState(false);
     const [confirming, setConfirming] = useState(false);
     const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -60,6 +63,26 @@ export default function VenueEdit() {
         catch (e) { toast.error(e.message); } finally { setUploading(false); }
     };
 
+    // Up to 3 gallery photos (hero + thumbnail strip on the public page). Uploads
+    // run sequentially and only fill the remaining free slots.
+    const handlePhotos = async (files) => {
+        const list = Array.from(files || []);
+        if (!list.length) return;
+        const free = MAX_PHOTOS - (form.photos?.length || 0);
+        if (free <= 0) { toast.error(el ? `Μέχρι ${MAX_PHOTOS} φωτογραφίες` : `Up to ${MAX_PHOTOS} photos`); return; }
+        setPhotoBusy(true);
+        try {
+            const urls = [];
+            for (const file of list.slice(0, free)) {
+                const { url } = await api.uploadVenueLogo(file);
+                urls.push(url);
+            }
+            setForm(f => ({ ...f, photos: [...(f.photos || []), ...urls].slice(0, MAX_PHOTOS) }));
+        } catch (e) { toast.error(e.message); } finally { setPhotoBusy(false); }
+    };
+
+    const removePhoto = (url) => setForm(f => ({ ...f, photos: (f.photos || []).filter(p => p !== url) }));
+
     const save = async () => {
         if (!form.name?.trim() || !form.location) { toast.error(el ? 'Συμπλήρωσε όνομα και νησί' : 'Enter a name and island'); return; }
         setBusy(true);
@@ -71,6 +94,7 @@ export default function VenueEdit() {
                 logo_url: form.logo_url || null, stars: form.stars ?? null,
                 website: form.website || null, description: form.description || null,
                 phone: form.phone || null, email: form.email || null,
+                photos: form.photos || [],
             };
             if (isNew) {
                 // New venue: keep the user on the page, now editing the saved record.
@@ -98,7 +122,7 @@ export default function VenueEdit() {
     );
 
     return (
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
             <button onClick={() => navigate('/profile')} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
                 <ArrowLeft className="w-4 h-4" />{el ? 'Πίσω στο προφίλ' : 'Back to profile'}
             </button>
@@ -107,6 +131,7 @@ export default function VenueEdit() {
                 {isNew ? (el ? 'Νέο κατάστημα' : 'New venue') : (el ? 'Επεξεργασία καταστήματος' : 'Edit venue')}
             </h1>
 
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)] gap-8 items-start">
             <div className="bg-card rounded-2xl border border-border/50 p-5 sm:p-6 space-y-5">
                 {/* Logo */}
                 <div className="flex items-center gap-4">
@@ -124,6 +149,39 @@ export default function VenueEdit() {
                                 : <><ImagePlus className="w-3.5 h-3.5" />{form.logo_url ? (el ? 'Αλλαγή εικόνας' : 'Change image') : (el ? 'Προσθήκη εικόνας' : 'Add image')}</>}
                         </label>
                         {form.logo_url && <button type="button" onClick={() => set('logo_url', null)} className="text-xs text-destructive hover:underline">{el ? 'Αφαίρεση' : 'Remove'}</button>}
+                    </div>
+                </div>
+
+                {/* Gallery photos (up to 3): the first is the hero on the public page */}
+                <div>
+                    <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-2">
+                        <ImagePlus className="w-3.5 h-3.5 text-muted-foreground" />
+                        {el ? 'Φωτογραφίες καταστήματος' : 'Venue photos'}
+                        <span className="text-xs font-normal text-muted-foreground">({(form.photos?.length || 0)}/{MAX_PHOTOS})</span>
+                    </label>
+                    <p className="text-xs text-muted-foreground mb-2">{el ? 'Η πρώτη φωτογραφία εμφανίζεται ως κύρια στη σελίδα σας.' : 'The first photo shows as the main image on your page.'}</p>
+                    <div className="flex flex-wrap gap-3">
+                        {(form.photos || []).map((url, i) => (
+                            <div key={url} className="relative group">
+                                <img src={url} alt="" className="w-28 h-20 rounded-xl object-cover border border-border/50" />
+                                {i === 0 && (
+                                    <span className="absolute top-1 left-1 rounded-md bg-black/60 text-white text-[10px] px-1.5 py-0.5">{el ? 'Κύρια' : 'Main'}</span>
+                                )}
+                                <button type="button" onClick={() => removePhoto(url)}
+                                    className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-destructive text-white flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+                        ))}
+                        {(form.photos?.length || 0) < MAX_PHOTOS && (
+                            <label className="w-28 h-20 rounded-xl border-2 border-dashed border-border/60 flex flex-col items-center justify-center gap-1 text-xs text-muted-foreground cursor-pointer hover:border-primary/40 transition-colors">
+                                <input type="file" accept="image/*" multiple className="hidden" disabled={photoBusy}
+                                    onChange={e => { handlePhotos(e.target.files); e.target.value = ''; }} />
+                                {photoBusy
+                                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                                    : <><ImagePlus className="w-4 h-4" />{el ? 'Προσθήκη' : 'Add'}</>}
+                            </label>
+                        )}
                     </div>
                 </div>
 
@@ -211,6 +269,15 @@ export default function VenueEdit() {
                         </Button>
                     </div>
                 </div>
+            </div>
+
+            {/* Live preview */}
+            <aside className="lg:sticky lg:top-8 space-y-4">
+                <h2 className="font-display font-semibold text-foreground">{el ? 'Προεπισκόπηση' : 'Live preview'}</h2>
+                <div className="max-h-[calc(100vh-7rem)] overflow-y-auto pr-1">
+                    <VenuePreviewCard form={form} venueTypes={venueTypes} lang={lang} />
+                </div>
+            </aside>
             </div>
         </div>
     );
