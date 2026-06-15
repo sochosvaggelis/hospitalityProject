@@ -24,13 +24,28 @@ router.post('/photo', authenticate, requireRole('hotel'), upload.single('photo')
 
 // Applies the public visibility rules + all list filters to a query builder.
 // The start/end dates are informative only and never affect visibility.
-function applyJobFilters(query, { category, employment_type, location, listing_lang, search }) {
+// Each filter accepts one or many values (repeated query params arrive as arrays).
+const toArr = (v) => (v == null ? [] : (Array.isArray(v) ? v : [v])).filter(x => x && x !== 'all');
+
+function applyJobFilters(query, q) {
   query = query.eq('status', 'active');
-  if (category && category !== 'all') query = query.eq('category', category);
-  if (employment_type && employment_type !== 'all') query = query.eq('employment_type', employment_type);
-  if (location && location !== 'all') query = query.ilike('location', `%${location}%`);
-  if (listing_lang && listing_lang !== 'all') {
-    query = listing_lang === 'both' ? query.eq('listing_lang', 'both') : query.in('listing_lang', [listing_lang, 'both']);
+  const category = toArr(q.category);
+  const employment_type = toArr(q.employment_type);
+  const location = toArr(q.location);
+  const hotel_name = toArr(q.hotel_name);
+  const listing_lang = toArr(q.listing_lang);
+  const search = q.search;
+
+  if (category.length) query = query.in('category', category);
+  if (employment_type.length) query = query.in('employment_type', employment_type);
+  if (hotel_name.length) query = query.in('hotel_name', hotel_name);
+  // Islands are matched loosely (location may be a sub-area of the island).
+  if (location.length) query = query.or(location.map(l => `location.ilike.%${l}%`).join(','));
+  if (listing_lang.length) {
+    // 'both' listings target everyone, so include them whenever a language is picked.
+    const set = new Set(listing_lang);
+    if (set.has('en') || set.has('el')) set.add('both');
+    query = query.in('listing_lang', [...set]);
   }
   if (search && search.trim()) {
     const term = search.trim().replace(/[,%()*]/g, ' ');
@@ -94,6 +109,15 @@ router.get('/mine', authenticate, requireRole('hotel'), async (req, res) => {
   const { data, error } = await supabase.from('jobs').select('*').eq('hotel_user_id', req.user.id).order('created_at', { ascending: false }).limit(50);
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
+});
+
+// Public: distinct venue names that currently have active jobs (drives the
+// "Venue name" filter dropdown). Declared before '/:id' so it isn't captured.
+router.get('/venue-names', async (req, res) => {
+  const { data, error } = await supabase.from('jobs').select('hotel_name').eq('status', 'active');
+  if (error) return res.status(500).json({ error: error.message });
+  const names = [...new Set((data || []).map(j => j.hotel_name).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  res.json(names);
 });
 
 // Public: single job

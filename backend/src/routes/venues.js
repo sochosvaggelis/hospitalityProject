@@ -57,7 +57,7 @@ router.get('/mine', authenticate, requireRole('hotel'), async (req, res) => {
 
 // Hotel: create a venue
 router.post('/', authenticate, requireRole('hotel'), async (req, res) => {
-  const { name, location, type, lat, lng, logo_url, stars, website, description, phone, email } = req.body;
+  const { name, location, type, lat, lng, logo_url, stars, website, description, phone, email, photos } = req.body;
   if (!name || !location) return res.status(400).json({ error: 'name and location are required' });
   const { data, error } = await supabase.from('venues').insert({
     owner_user_id: req.user.id,
@@ -65,6 +65,7 @@ router.post('/', authenticate, requireRole('hotel'), async (req, res) => {
     lat: lat ?? null, lng: lng ?? null,
     logo_url: logo_url || null,
     stars: stars ?? null, website: website || null, description: description || null, phone: phone || null, email: email || null,
+    photos: Array.isArray(photos) ? photos.slice(0, 3) : [],
   }).select().single();
   if (error) return res.status(500).json({ error: error.message });
   res.status(201).json(data);
@@ -76,9 +77,10 @@ router.put('/:id', authenticate, async (req, res) => {
   if (!venue) return res.status(404).json({ error: 'Venue not found' });
   if (venue.owner_user_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
 
-  const ALLOWED_FIELDS = ['name', 'location', 'type', 'lat', 'lng', 'logo_url', 'stars', 'website', 'description', 'phone', 'email'];
+  const ALLOWED_FIELDS = ['name', 'location', 'type', 'lat', 'lng', 'logo_url', 'stars', 'website', 'description', 'phone', 'email', 'photos'];
   const updates = {};
   for (const key of ALLOWED_FIELDS) if (key in req.body) updates[key] = req.body[key];
+  if ('photos' in updates) updates.photos = Array.isArray(updates.photos) ? updates.photos.slice(0, 3) : [];
   if (Object.keys(updates).length === 0) return res.status(400).json({ error: 'No fields to update' });
 
   const { data, error } = await supabase.from('venues').update(updates).eq('id', req.params.id).select().single();

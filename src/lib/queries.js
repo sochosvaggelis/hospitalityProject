@@ -31,6 +31,10 @@ export const useInfiniteJobs = (filters = {}) =>
         placeholderData: keepPreviousData,
     });
 
+// Distinct venue names with active jobs — options for the "Venue name" filter.
+export const useVenueNames = () =>
+    useQuery({ queryKey: ['venue-names'], queryFn: api.getVenueNames, staleTime: 5 * MINUTE });
+
 // Aggregate counts (total + per island) for the home page, computed server-side.
 export const useJobStats = () =>
     useQuery({ queryKey: ['job-stats'], queryFn: api.getJobStats, staleTime: 1 * MINUTE });

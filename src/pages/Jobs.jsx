@@ -1,39 +1,35 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Search, SlidersHorizontal, X, ChevronDown } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import JobFilterSearch from '@/components/JobFilterSearch';
 import JobCard from '@/components/JobCard';
 import useLanguage from '@/lib/useLanguage';
-import { useInfiniteJobs, useIslands, useCategories, useEmploymentTypes } from '@/lib/queries';
+import { useInfiniteJobs, useIslands, useCategories, useEmploymentTypes, useVenueNames } from '@/lib/queries';
 
 export default function Jobs() {
     const { t, lang } = useLanguage();
+    // Free-text search is no longer typed here; it only arrives via the URL (e.g.
+    // the Home hero) and shows as a clearable badge. The bar itself is filters-only.
     const [search, setSearch] = useState('');
-    const [debouncedSearch, setDebouncedSearch] = useState('');
-    const [island, setIsland] = useState('all');
-    const [category, setCategory] = useState('all');
-    const [empType, setEmpType] = useState('all');
-    const [listingLang, setListingLang] = useState('all');
-    const [showFilters, setShowFilters] = useState(false);
+    // Each filter holds an array of selected values (multi-select chips).
+    const [island, setIsland] = useState([]);
+    const [category, setCategory] = useState([]);
+    const [empType, setEmpType] = useState([]);
+    const [listingLang, setListingLang] = useState([]);
+    const [venueName, setVenueName] = useState([]);
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         if (params.get('search')) setSearch(params.get('search'));
-        if (params.get('category')) setCategory(params.get('category'));
-        if (params.get('island')) setIsland(params.get('island'));
+        if (params.get('category')) setCategory([params.get('category')]);
+        if (params.get('island')) setIsland([params.get('island')]);
     }, []);
-
-    // Debounce the search box so we don't fire a request on every keystroke.
-    useEffect(() => {
-        const id = setTimeout(() => setDebouncedSearch(search), 350);
-        return () => clearTimeout(id);
-    }, [search]);
 
     const { data: catsData } = useCategories();
     const { data: empsData } = useEmploymentTypes();
     const { data: islandData = [] } = useIslands();
+    const { data: venueNames = [] } = useVenueNames();
 
     const categories = useMemo(() => (catsData || []).map(c => c.key), [catsData]);
     const empTypes = useMemo(() => (empsData || []).map(e => e.key), [empsData]);
@@ -45,13 +41,14 @@ export default function Jobs() {
     // filtered client-side, and results arrive one page at a time.
     const filters = useMemo(() => {
         const f = {};
-        if (category !== 'all') f.category = category;
-        if (empType !== 'all') f.employment_type = empType;
-        if (listingLang !== 'all') f.listing_lang = listingLang;
-        if (island !== 'all') f.location = island;
-        if (debouncedSearch.trim()) f.search = debouncedSearch.trim();
+        if (category.length) f.category = category;
+        if (empType.length) f.employment_type = empType;
+        if (listingLang.length) f.listing_lang = listingLang;
+        if (island.length) f.location = island;
+        if (venueName.length) f.hotel_name = venueName;
+        if (search.trim()) f.search = search.trim();
         return f;
-    }, [category, empType, listingLang, island, debouncedSearch]);
+    }, [category, empType, listingLang, island, venueName, search]);
 
     const { data, isLoading: loading, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteJobs(filters);
     const jobs = useMemo(() => (data?.pages || []).flatMap(p => p.jobs), [data]);
@@ -69,82 +66,42 @@ export default function Jobs() {
         return () => obs.disconnect();
     }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-    const allCategories = ['all', ...categories];
-    const allEmpTypes = ['all', ...empTypes];
-    const allIslands = islands;
-
     const catLabel = c => c === 'all' ? (lang === 'el' ? 'Όλες' : 'All') : (catMap[c]?.[lang] ?? catMap[c]?.en ?? c);
     const empLabel = e => e === 'all' ? (lang === 'el' ? 'Όλες' : 'All') : (empMap[e]?.[lang] ?? empMap[e]?.en ?? e);
     const langLabel = l => ({ all: lang === 'el' ? 'Όλες' : 'All', en: 'English', el: 'Ελληνικά', both: lang === 'el' ? 'Και τα 2' : 'Both' }[l] ?? l);
-    const clearFilters = () => { setCategory('all'); setEmpType('all'); setIsland('all'); setListingLang('all'); setSearch(''); };
-    const hasFilters = category !== 'all' || empType !== 'all' || island !== 'all' || listingLang !== 'all' || search.trim();
+
+    const emptyText = lang === 'el' ? 'Καμία επιλογή' : 'No match';
+
+    // Each filter is a chip on the bar with its own multi-select dropdown of values.
+    const filterDefs = useMemo(() => [
+        { key: 'island', label: lang === 'el' ? 'Νησί' : 'Island', values: island, onChange: setIsland,
+            options: islands.map(i => ({ value: i, label: i })) },
+        { key: 'category', label: lang === 'el' ? 'Κατηγορία' : 'Category', values: category, onChange: setCategory,
+            options: categories.map(c => ({ value: c, label: catLabel(c) })) },
+        { key: 'venue', label: lang === 'el' ? 'Όνομα Μαγαζιού' : 'Venue Name', values: venueName, onChange: setVenueName,
+            options: venueNames.map(n => ({ value: n, label: n })) },
+        { key: 'empType', label: lang === 'el' ? 'Τύπος Απασχόλησης' : 'Employment Type', values: empType, onChange: setEmpType,
+            options: empTypes.map(e => ({ value: e, label: empLabel(e) })) },
+        { key: 'lang', label: lang === 'el' ? 'Γλώσσα Αγγελίας' : 'Listing Language', values: listingLang, onChange: setListingLang,
+            options: ['en', 'el', 'both'].map(l => ({ value: l, label: langLabel(l) })) },
+    ], [lang, category, empType, island, listingLang, venueName, categories, empTypes, islands, venueNames, catMap, empMap]);
+
+    const clearFilters = () => { setCategory([]); setEmpType([]); setIsland([]); setListingLang([]); setVenueName([]); setSearch(''); };
+    const hasFilters = category.length || empType.length || island.length || listingLang.length || venueName.length || search.trim();
 
     return (
         <div style={{ background: '#eef4fd', minHeight: '100vh' }}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
                 <h1 className="font-display text-3xl font-bold text-foreground mb-6">{t('jobs_title')}</h1>
 
-                <div className="flex flex-col sm:flex-row gap-3 mb-6">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input className="pl-10 h-11 rounded-xl" style={{ background: 'hsl(40 55% 96%)', borderColor: 'hsl(40 35% 82%)' }}
-                            placeholder={t('hero_search_placeholder')} value={search} onChange={e => setSearch(e.target.value)} />
-                    </div>
-                    <Button variant="outline" className="h-11 rounded-xl gap-2" style={{ background: 'hsl(40 55% 96%)', borderColor: 'hsl(40 35% 82%)' }}
-                        onClick={() => setShowFilters(!showFilters)}>
-                        <SlidersHorizontal className="w-4 h-4" />{t('jobs_filter')}
-                        <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${showFilters ? 'rotate-180' : ''}`} />
-                    </Button>
-                </div>
-
-                <div className={`grid transition-all duration-300 ease-in-out ${showFilters ? 'grid-rows-[1fr] opacity-100 mb-6' : 'grid-rows-[0fr] opacity-0 mb-0'}`}>
-                    <div className="overflow-hidden">
-                    <div className="bg-card rounded-2xl border border-border/50 p-4 flex flex-col sm:flex-row gap-4">
-                        {[
-                            { label: lang === 'el' ? 'Κατηγορία' : 'Category', value: category, onChange: setCategory, options: allCategories, labelFn: catLabel },
-                            { label: lang === 'el' ? 'Τύπος Απασχόλησης' : 'Employment Type', value: empType, onChange: setEmpType, options: allEmpTypes, labelFn: empLabel },
-                        ].map(({ label, value, onChange, options, labelFn }) => (
-                            <div key={label} className="flex-1">
-                                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{label}</label>
-                                <Select value={value} onValueChange={onChange}>
-                                    <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
-                                    <SelectContent>{options.map(o => <SelectItem key={o} value={o}>{labelFn(o)}</SelectItem>)}</SelectContent>
-                                </Select>
-                            </div>
-                        ))}
-                        <div className="flex-1">
-                            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{lang === 'el' ? 'Νησί' : 'Island'}</label>
-                            <Select value={island} onValueChange={setIsland}>
-                                <SelectTrigger className="rounded-xl"><SelectValue placeholder={lang === 'el' ? 'Όλα' : 'All'} /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">{lang === 'el' ? 'Όλα' : 'All'}</SelectItem>
-                                    {allIslands.map(isl => <SelectItem key={isl} value={isl}>{isl}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="flex-1">
-                            <label className="text-xs font-medium text-muted-foreground mb-1.5 block">{lang === 'el' ? 'Γλώσσα Αγγελίας' : 'Listing Language'}</label>
-                            <Select value={listingLang} onValueChange={setListingLang}>
-                                <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">{lang === 'el' ? 'Όλες' : 'All'}</SelectItem>
-                                    <SelectItem value="en">English</SelectItem>
-                                    <SelectItem value="el">Ελληνικά</SelectItem>
-                                    <SelectItem value="both">{lang === 'el' ? 'Και τα 2' : 'Both'}</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-                    </div>
+                <div className="mb-4">
+                    <JobFilterSearch lang={lang} emptyText={emptyText} defs={filterDefs} />
                 </div>
 
                 {hasFilters && (
                     <div className="flex items-center gap-2 mb-4 flex-wrap">
-                        {category !== 'all' && <Badge variant="secondary" className="gap-1 rounded-lg">{catLabel(category)}<X className="w-3 h-3 cursor-pointer" onClick={() => setCategory('all')} /></Badge>}
-                        {empType !== 'all' && <Badge variant="secondary" className="gap-1 rounded-lg">{empLabel(empType)}<X className="w-3 h-3 cursor-pointer" onClick={() => setEmpType('all')} /></Badge>}
-                        {island !== 'all' && <Badge variant="secondary" className="gap-1 rounded-lg">{island}<X className="w-3 h-3 cursor-pointer" onClick={() => setIsland('all')} /></Badge>}
-                        {listingLang !== 'all' && <Badge variant="secondary" className="gap-1 rounded-lg">{langLabel(listingLang)}<X className="w-3 h-3 cursor-pointer" onClick={() => setListingLang('all')} /></Badge>}
-                        <button onClick={clearFilters} className="text-xs text-primary hover:underline">{lang === 'el' ? 'Καθαρισμός' : 'Clear all'}</button>
+                        {search.trim() && <Badge variant="secondary" className="gap-1 rounded-lg">{(lang === 'el' ? 'Αναζήτηση: ' : 'Search: ') + search.trim()}<X className="w-3 h-3 cursor-pointer" onClick={() => setSearch('')} /></Badge>}
+                        <button onClick={clearFilters} className="text-xs text-primary hover:underline">{lang === 'el' ? 'Καθαρισμός όλων' : 'Clear all'}</button>
                     </div>
                 )}
 

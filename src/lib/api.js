@@ -39,10 +39,16 @@ export const api = {
 
     // Jobs
     getJobs: (params = {}) => {
-        const qs = new URLSearchParams(params).toString();
+        const sp = new URLSearchParams();
+        for (const [k, v] of Object.entries(params)) {
+            if (Array.isArray(v)) v.forEach(x => sp.append(k, x));
+            else if (v != null && v !== '') sp.append(k, v);
+        }
+        const qs = sp.toString();
         return get(`/api/jobs${qs ? `?${qs}` : ''}`);
     },
     getJobStats: () => get('/api/jobs/stats'),
+    getVenueNames: () => get('/api/jobs/venue-names'),
     getIslandJobs: (location) => get(`/api/jobs/map?location=${encodeURIComponent(location)}`),
     getJob: (id) => get(`/api/jobs/${id}`),
     getMyJobs: () => get('/api/jobs/mine'),

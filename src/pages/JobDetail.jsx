@@ -48,7 +48,7 @@ export default function JobDetail() {
     }, [jobId, isAuthenticated, me]);
 
     const handleApply = () => {
-        if (!isAuthenticated) { navigate('/login'); return; }
+        if (!isAuthenticated) { navigate('/login', { state: { from: location.pathname } }); return; }
         setApplyOpen(true);
     };
 
