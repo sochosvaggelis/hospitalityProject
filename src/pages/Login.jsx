@@ -4,6 +4,7 @@ import { Waves, AlertCircle, CheckCircle2, Eye, EyeOff, Loader2 } from 'lucide-r
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/lib/supabase';
+import RequiredMark from '@/components/RequiredMark';
 import useLanguage from '@/lib/useLanguage';
 
 export default function Login() {
@@ -171,7 +172,7 @@ export default function Login() {
                         {mode === 'register' && (
                             <div>
                                 <label className="text-sm font-medium text-foreground mb-1.5 block">
-                                    {lang === 'el' ? 'Ονοματεπώνυμο' : 'Full Name'}
+                                    {lang === 'el' ? 'Ονοματεπώνυμο' : 'Full Name'}<RequiredMark />
                                 </label>
                                 <Input
                                     className="rounded-xl"
@@ -183,7 +184,7 @@ export default function Login() {
                         )}
 
                         <div>
-                            <label className="text-sm font-medium text-foreground mb-1.5 block">Email</label>
+                            <label className="text-sm font-medium text-foreground mb-1.5 block">Email<RequiredMark /></label>
                             <Input
                                 type="email"
                                 className="rounded-xl"
@@ -198,7 +199,7 @@ export default function Login() {
                             <div>
                                 <div className="flex items-center justify-between mb-1.5">
                                     <label className="text-sm font-medium text-foreground">
-                                        {lang === 'el' ? 'Κωδικός' : 'Password'}
+                                        {lang === 'el' ? 'Κωδικός' : 'Password'}<RequiredMark />
                                     </label>
                                     {mode === 'login' && (
                                         <button type="button" onClick={() => switchMode('forgot')}

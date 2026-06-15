@@ -16,6 +16,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { MONTH_OPTIONS, monthName } from '@/lib/utils';
 import ChecklistField from '@/components/ChecklistField';
 import VenueField from '@/components/VenueField';
+import RequiredMark, { RequiredNote } from '@/components/RequiredMark';
 import { useIslands, useMyVenues } from '@/lib/queries';
 import { BENEFIT_OPTIONS, REQUIREMENT_OPTIONS } from '@/lib/jobOptions';
 import moment from 'moment';
@@ -707,6 +708,7 @@ export default function Dashboard() {
                 </DialogHeader>
                 {editModal && (
                     <div className="space-y-4 mt-2">
+                        <RequiredNote lang={lang} />
                         <div>
                             <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Φωτογραφία' : 'Photo'}</label>
                             <JobPhotoField
@@ -719,7 +721,7 @@ export default function Dashboard() {
                             />
                         </div>
                         <div>
-                            <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Τίτλος *' : 'Title *'}</label>
+                            <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Τίτλος' : 'Title'}<RequiredMark /></label>
                             <Input className="rounded-xl" value={editModal.form.title} onChange={e => setEditModal(m => ({ ...m, form: { ...m.form, title: e.target.value } }))} />
                         </div>
                         <div className="grid grid-cols-2 gap-3">

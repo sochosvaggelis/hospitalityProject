@@ -17,6 +17,7 @@ import JobPreviewCard from '@/components/JobPreviewCard';
 import JobPhotoField from '@/components/JobPhotoField';
 import VenueField from '@/components/VenueField';
 import ChecklistField from '@/components/ChecklistField';
+import RequiredMark, { RequiredNote } from '@/components/RequiredMark';
 import { BENEFIT_OPTIONS, REQUIREMENT_OPTIONS } from '@/lib/jobOptions';
 
 function Section({ icon: Icon, title, subtitle, children }) {
@@ -183,6 +184,7 @@ export default function PostJob() {
                             ? 'Συμπλήρωσε τα στοιχεία της θέσης — όσο πιο πλήρης η αγγελία, τόσο περισσότερες αιτήσεις.'
                             : 'Fill in the position details — the more complete the listing, the more applications you get.'}
                     </p>
+                    <RequiredNote lang={lang} className="mt-2" />
                 </div>
                 {import.meta.env.DEV && (
                     <Button variant="outline" size="sm" onClick={fillDemo} className="rounded-xl flex-shrink-0">Fill demo</Button>
@@ -196,7 +198,7 @@ export default function PostJob() {
                     title={lang === 'el' ? 'Γλώσσα & Τίτλος' : 'Language & Title'}
                     subtitle={lang === 'el' ? 'Σε ποια γλώσσα απευθύνεται η αγγελία' : 'Which language the listing targets'}>
                     <div>
-                        <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Γλώσσα Αγγελίας *' : 'Listing Language *'}</label>
+                        <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Γλώσσα Αγγελίας' : 'Listing Language'}<RequiredMark /></label>
                         <Select value={form.listing_lang} onValueChange={v => set('listing_lang', v)}>
                             <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
                             <SelectContent>
@@ -209,13 +211,13 @@ export default function PostJob() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {showEn && (
                             <div>
-                                <label className="text-sm font-medium text-foreground mb-1.5 block">Job Title (EN) *</label>
+                                <label className="text-sm font-medium text-foreground mb-1.5 block">Job Title (EN)<RequiredMark /></label>
                                 <Input className="rounded-xl" value={form.title} onChange={e => set('title', e.target.value)} placeholder="e.g. Waiter/Waitress" />
                             </div>
                         )}
                         {showEl && (
                             <div>
-                                <label className="text-sm font-medium text-foreground mb-1.5 block">Τίτλος Θέσης (EL) *</label>
+                                <label className="text-sm font-medium text-foreground mb-1.5 block">Τίτλος Θέσης (EL)<RequiredMark /></label>
                                 <Input className="rounded-xl" value={form.title_el} onChange={e => set('title_el', e.target.value)} placeholder="π.χ. Σερβιτόρος/α" />
                             </div>
                         )}
@@ -228,7 +230,7 @@ export default function PostJob() {
                     subtitle={lang === 'el' ? 'Πού, τι και πότε' : 'Where, what and when'}>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Κατάστημα *' : 'Venue *'}</label>
+                            <label className="text-sm font-medium text-foreground mb-1.5 block">{lang === 'el' ? 'Κατάστημα' : 'Venue'}<RequiredMark /></label>
                             <VenueField
                                 value={form.venue_id}
                                 onSelect={v => setForm(f => ({ ...f, venue_id: v?.id || '', location: v?.location || '' }))}
@@ -321,7 +323,7 @@ export default function PostJob() {
                         {showEn && (
                             <div>
                                 <label className="text-sm font-medium text-foreground mb-1.5 block">
-                                    {form.listing_lang === 'both' ? 'EN Job Description *' : 'Job Description *'}
+                                    {form.listing_lang === 'both' ? 'EN Job Description' : 'Job Description'}<RequiredMark />
                                 </label>
                                 <Textarea className="rounded-xl min-h-[120px]" value={form.description} onChange={e => set('description', e.target.value)} />
                             </div>
@@ -329,7 +331,7 @@ export default function PostJob() {
                         {showEl && (
                             <div>
                                 <label className="text-sm font-medium text-foreground mb-1.5 block">
-                                    {form.listing_lang === 'both' ? 'EL Περιγραφή Θέσης *' : 'Περιγραφή Θέσης *'}
+                                    {form.listing_lang === 'both' ? 'EL Περιγραφή Θέσης' : 'Περιγραφή Θέσης'}<RequiredMark />
                                 </label>
                                 <Textarea className="rounded-xl min-h-[120px]" value={form.description_el} onChange={e => set('description_el', e.target.value)} />
                             </div>

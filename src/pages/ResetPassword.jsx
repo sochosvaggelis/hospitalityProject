@@ -4,6 +4,7 @@ import { Waves, AlertCircle, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase, recoveryTokens } from '@/lib/supabase';
+import RequiredMark from '@/components/RequiredMark';
 import useLanguage from '@/lib/useLanguage';
 
 export default function ResetPassword() {
@@ -93,7 +94,7 @@ export default function ResetPassword() {
                         <div className="space-y-4">
                             <div>
                                 <label className="text-sm font-medium text-foreground mb-1.5 block">
-                                    {lang === 'el' ? 'Νέος κωδικός' : 'New password'}
+                                    {lang === 'el' ? 'Νέος κωδικός' : 'New password'}<RequiredMark />
                                 </label>
                                 <div className="relative">
                                     <Input

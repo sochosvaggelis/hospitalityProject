@@ -15,6 +15,7 @@ import { useMyVenues, useVenueTypes, useIslands } from '@/lib/queries';
 import { api } from '@/lib/api';
 import { ISLAND_COORDS } from '@/lib/islandCoords';
 import VenuePreviewCard from '@/components/VenuePreviewCard';
+import RequiredMark, { RequiredNote } from '@/components/RequiredMark';
 import { toast } from 'sonner';
 
 const blank = { name: '', type: '', location: '', lat: null, lng: null, logo_url: null, stars: null, website: '', description: '', phone: '', email: '', photos: [] };
@@ -127,9 +128,10 @@ export default function VenueEdit() {
                 <ArrowLeft className="w-4 h-4" />{el ? 'Πίσω στο προφίλ' : 'Back to profile'}
             </button>
 
-            <h1 className="font-display text-2xl font-bold text-foreground mb-6">
+            <h1 className="font-display text-2xl font-bold text-foreground mb-1">
                 {isNew ? (el ? 'Νέο κατάστημα' : 'New venue') : (el ? 'Επεξεργασία καταστήματος' : 'Edit venue')}
             </h1>
+            <RequiredNote lang={lang} className="mb-6" />
 
             <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)] gap-8 items-start">
             <div className="bg-card rounded-2xl border border-border/50 p-5 sm:p-6 space-y-5">
@@ -187,7 +189,7 @@ export default function VenueEdit() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-2"><Building2 className="w-3.5 h-3.5 text-muted-foreground" />{el ? 'Όνομα *' : 'Name *'}</label>
+                        <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-2"><Building2 className="w-3.5 h-3.5 text-muted-foreground" />{el ? 'Όνομα' : 'Name'}<RequiredMark /></label>
                         <Input className="rounded-xl" value={form.name} onChange={e => set('name', e.target.value)} placeholder={el ? 'π.χ. Starbucks Παραλίας' : 'e.g. Starbucks Beach'} />
                     </div>
                     <div>
@@ -222,7 +224,7 @@ export default function VenueEdit() {
                 </div>
 
                 <div>
-                    <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-2"><MapPin className="w-3.5 h-3.5 text-muted-foreground" />{el ? 'Νησί *' : 'Island *'}</label>
+                    <label className="text-sm font-medium text-foreground mb-1.5 flex items-center gap-2"><MapPin className="w-3.5 h-3.5 text-muted-foreground" />{el ? 'Νησί' : 'Island'}<RequiredMark /></label>
                     <IslandDropdown value={form.location} islands={islands}
                         onValueChange={loc => setForm(f => ({ ...f, location: loc, lat: null, lng: null }))}
                         placeholder={el ? 'Επίλεξε νησί' : 'Select island'} />
