@@ -16,7 +16,6 @@ import Messages from './pages/Messages';
 import PostJob from './pages/PostJob';
 import Admin from './pages/Admin';
 import Favorites from './pages/Favorites';
-import HotelProfile from './pages/HotelProfile';
 import VenuePublic from './pages/VenuePublic';
 import VenueEdit from './pages/VenueEdit';
 import ScrollToTop from './lib/ScrollToTop';
@@ -73,7 +72,6 @@ const AppContent = () => {
                 <Route path="/favorites" element={<Favorites />} />
                 <Route path="/post-job" element={<PostJob />} />
                 <Route path="/admin" element={<Admin />} />
-                <Route path="/hotels/:hotelId" element={<HotelProfile />} />
                 <Route path="/venues/:venueId/edit" element={<VenueEdit />} />
                 <Route path="/venues/:venueId" element={<VenuePublic />} />
                 <Route path="/terms" element={<Terms />} />

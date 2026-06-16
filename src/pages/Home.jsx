@@ -74,8 +74,8 @@ export default function Home() {
                         </p>
                         <p className="animate-hero mt-3 sm:mt-4 text-sm sm:text-lg text-white/70 leading-relaxed max-w-2xl mx-auto" style={{ animationDelay: '0.2s' }}>
                             {lang === 'el'
-                                ? 'Συνδέουμε σερβιτόρους με ξενοδοχεία και καταστήματα στα ελληνικά νησιά.'
-                                : 'We connect servers with hotels and venues across the Greek islands.'}
+                                ? 'Συνδέουμε σερβιτόρους με επιχειρήσεις σε όλα τα ελληνικά νησιά.'
+                                : 'We connect servers with businesses across the Greek islands.'}
                         </p>
                         <div className="animate-hero mt-6 sm:mt-10 flex flex-col sm:flex-row gap-3 max-w-xl mx-auto p-2 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 shadow-2xl" style={{ animationDelay: '0.3s' }}>
                             <div className="relative flex-1">

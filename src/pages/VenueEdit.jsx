@@ -161,7 +161,7 @@ export default function VenueEdit() {
                         {el ? 'Φωτογραφίες καταστήματος' : 'Venue photos'}
                         <span className="text-xs font-normal text-muted-foreground">({(form.photos?.length || 0)}/{MAX_PHOTOS})</span>
                     </label>
-                    <p className="text-xs text-muted-foreground mb-2">{el ? 'Η πρώτη φωτογραφία εμφανίζεται ως κύρια στη σελίδα σας.' : 'The first photo shows as the main image on your page.'}</p>
+                    <p className="text-xs text-muted-foreground mb-2">{el ? 'Η πρώτη φωτογραφία εμφανίζεται ως κύρια στη σελίδα σου.' : 'The first photo shows as the main image on your page.'}</p>
                     <div className="flex flex-wrap gap-3">
                         {(form.photos || []).map((url, i) => (
                             <div key={url} className="relative group">

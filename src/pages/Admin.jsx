@@ -54,7 +54,7 @@ export default function Admin() {
 
     if (!me) return <GuestView icon={Shield} titleEl="Admin Panel" titleEn="Admin Panel" descEl="Συνδεθείτε ως διαχειριστής για πρόσβαση." descEn="Sign in as admin to access this panel." />;
     if (me.role !== 'admin') {
-        return <div className="flex justify-center items-center py-32"><p className="text-muted-foreground">{lang === 'el' ? 'Δεν έχετε πρόσβαση.' : 'Access denied.'}</p></div>;
+        return <div className="flex justify-center items-center py-32"><p className="text-muted-foreground">{lang === 'el' ? 'Δεν έχεις πρόσβαση.' : 'Access denied.'}</p></div>;
     }
 
     const roleIcon = { admin: Shield, hotel: Building2, user: User };
@@ -104,7 +104,7 @@ export default function Admin() {
                                                         <SelectTrigger className="h-8 w-28 rounded-lg text-xs"><SelectValue /></SelectTrigger>
                                                         <SelectContent>
                                                             <SelectItem value="user">User</SelectItem>
-                                                            <SelectItem value="hotel">Hotel</SelectItem>
+                                                            <SelectItem value="hotel">Business</SelectItem>
                                                             <SelectItem value="admin">Admin</SelectItem>
                                                         </SelectContent>
                                                     </Select>

@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/AuthContext';
 import AppIntro from './AppIntro';
 
 const ROLES = [
-    { key: 'server', icon: Search, title: "I'm looking for work", desc: 'Browse job listings, apply to positions, and get hired at top hotels.' },
+    { key: 'server', icon: Search, title: "I'm looking for work", desc: 'Browse job listings, apply to positions, and get hired at top hospitality businesses.' },
     { key: 'hotel', icon: Users, title: "I'm looking for staff", desc: 'Post job openings, review applications, and find the best hospitality talent.' },
 ];
 

@@ -79,7 +79,7 @@ export default function ResetPassword() {
                         <div className="text-center py-6 space-y-3">
                             <p className="text-sm text-muted-foreground">
                                 {lang === 'el'
-                                    ? 'Ο σύνδεσμος δεν είναι έγκυρος ή έχει λήξει. Ζητήστε νέο από τη σελίδα σύνδεσης.'
+                                    ? 'Ο σύνδεσμος δεν είναι έγκυρος ή έχει λήξει. Ζήτησε νέο από τη σελίδα σύνδεσης.'
                                     : 'This link is invalid or has expired. Request a new one from the sign-in page.'}
                             </p>
                             <Button variant="outline" className="rounded-xl" onClick={() => navigate('/login', { replace: true })}>

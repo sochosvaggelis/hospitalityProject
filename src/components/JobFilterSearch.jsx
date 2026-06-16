@@ -37,7 +37,7 @@ export default function JobFilterSearch({ lang, emptyText, defs }) {
     const remove = (def) => { def.onChange([]); if (openKey === def.key) setOpenKey(null); };
 
     const summary = (def) => {
-        if (!def.values.length) return el ? 'επιλέξτε…' : 'select…';
+        if (!def.values.length) return el ? 'διάλεξε…' : 'select…';
         const labels = def.values.map(v => def.options.find(o => o.value === v)?.label ?? v);
         return labels.length <= 2 ? labels.join(', ') : `${def.values.length} ${el ? 'επιλεγμένα' : 'selected'}`;
     };

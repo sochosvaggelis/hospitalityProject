@@ -137,7 +137,7 @@ export default function Messages() {
     };
 
     if (authLoading) return <div className="flex justify-center py-32"><div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" /></div>;
-    if (!me) return <GuestView icon={MessageCircle} titleEl="Τα Μηνύματά σας" titleEn="Your Messages" descEl="Συνδεθείτε για να δείτε και να στείλετε μηνύματα." descEn="Sign in to view and send messages." />;
+    if (!me) return <GuestView icon={MessageCircle} titleEl="Τα Μηνύματά σου" titleEn="Your Messages" descEl="Σύνδεσου για να δεις και να στείλεις μηνύματα." descEn="Sign in to view and send messages." />;
     if (loading) return <div className="flex justify-center py-32"><div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" /></div>;
 
     return (

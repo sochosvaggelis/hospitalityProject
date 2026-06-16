@@ -44,7 +44,7 @@ export const useJobStats = () =>
 export const useMyVenues = (enabled = true) =>
     useQuery({ queryKey: ['my-venues'], queryFn: api.getMyVenues, staleTime: 1 * MINUTE, enabled });
 
-// Job seeker's favourited hotel/job ref_ids — drives heart toggle state.
+// Job seeker's favourited venue/job ref_ids — drives heart toggle state.
 export const useUserFavoriteIds = (enabled = true) =>
     useQuery({
         queryKey: ['user-favorite-ids'],

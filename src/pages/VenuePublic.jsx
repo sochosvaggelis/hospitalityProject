@@ -7,6 +7,7 @@ import useLanguage from '@/lib/useLanguage';
 import { formatSalary } from '@/lib/i18n';
 import { api } from '@/lib/api';
 import { useVenueTypes } from '@/lib/queries';
+import FavoriteButton from '@/components/FavoriteButton';
 import moment from 'moment';
 
 // Public page for a single venue (shop/property): its identity + active job
@@ -85,7 +86,10 @@ export default function VenuePublic() {
 
                     {/* Info */}
                     <div className={`px-6 sm:px-8 pb-6 sm:pb-8 ${photos.length > 1 ? 'pt-4' : 'pt-12 sm:pt-14'}`}>
-                        <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground">{venue.name}</h1>
+                        <div className="flex items-start justify-between gap-3">
+                            <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground">{venue.name}</h1>
+                            <FavoriteButton kind="venue" id={venue.id} variant="button" className="flex-shrink-0" />
+                        </div>
                         {venue.stars > 0 && (
                             <div className="flex items-center gap-0.5 mt-1.5">
                                 {Array.from({ length: 5 }).map((_, i) => (

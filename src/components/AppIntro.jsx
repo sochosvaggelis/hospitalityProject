@@ -9,7 +9,7 @@ const SLIDES = {
     server: [
         {
             title: 'Discover the right job',
-            desc: 'Browse hand-picked hospitality openings from top hotels and resorts, filtered by role, island, and season.',
+            desc: 'Browse hand-picked openings from top hospitality businesses, filtered by role, island, and season.',
             image: '/applyToJobs.png',
             shot: true,
         },
@@ -113,7 +113,7 @@ export default function AppIntro({ role, onDone }) {
                     {/* Text side */}
                     <div className="relative flex flex-col p-8 md:p-10">
                         <h1 className="font-display text-3xl font-bold text-foreground leading-tight mb-6">
-                            {role === 'hotel' ? 'For hotels' : 'For job seekers'}
+                            {role === 'hotel' ? 'For businesses' : 'For job seekers'}
                         </h1>
 
                         <div className="flex-1 flex flex-col justify-center overflow-hidden">

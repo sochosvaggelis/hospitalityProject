@@ -102,11 +102,11 @@ export default function PostJob() {
     const handleSubmit = async (status = 'active') => {
         const isDraft = status === 'draft';
         if (!form.title && !form.title_el) {
-            toast.error(lang === 'el' ? 'Συμπληρώστε τουλάχιστον τον τίτλο' : 'Please fill in at least the title');
+            toast.error(lang === 'el' ? 'Συμπλήρωσε τουλάχιστον τον τίτλο' : 'Please fill in at least the title');
             return;
         }
         if (!isDraft && (!form.location || (!form.description && !form.description_el))) {
-            toast.error(lang === 'el' ? 'Συμπληρώστε τα απαιτούμενα πεδία' : 'Please fill in required fields');
+            toast.error(lang === 'el' ? 'Συμπλήρωσε τα απαιτούμενα πεδία' : 'Please fill in required fields');
             return;
         }
         setSubmitting(true);
@@ -172,7 +172,7 @@ export default function PostJob() {
     const hotelName = selectedVenue?.name || me?.hotel_name || me?.full_name;
     const hotelLogo = selectedVenue?.logo_url || me?.hotel_logo_url || me?.avatar_url;
 
-    if (!isAuthenticated && !isLoading) return <GuestView icon={Briefcase} titleEl="Δημοσίευση Αγγελίας" titleEn="Post a Job" descEl="Συνδεθείτε ως ξενοδοχείο για να δημοσιεύσετε νέες θέσεις εργασίας." descEn="Sign in as a hotel to post new job listings." />;
+    if (!isAuthenticated && !isLoading) return <GuestView icon={Briefcase} titleEl="Δημοσίευση Αγγελίας" titleEn="Post a Job" descEl="Σύνδεσου ως επιχείρηση για να δημοσιεύσεις νέες θέσεις εργασίας." descEn="Sign in as a business to post new job listings." />;
 
     return (
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">

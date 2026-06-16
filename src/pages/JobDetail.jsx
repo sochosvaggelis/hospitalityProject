@@ -92,9 +92,13 @@ export default function JobDetail() {
                 <div className="flex items-start gap-4 mb-6">
                     <div className="flex-1">
                         <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground">{lang === 'el' && job.title_el ? job.title_el : job.title}</h1>
-                        <Link to={job.venue_id ? `/venues/${job.venue_id}` : `/hotels/${job.hotel_user_id}`} className="text-lg text-muted-foreground hover:text-primary transition-colors mt-1 inline-block">
-                            {job.hotel_name}
-                        </Link>
+                        {job.venue_id ? (
+                            <Link to={`/venues/${job.venue_id}`} className="text-lg text-muted-foreground hover:text-primary transition-colors mt-1 inline-block">
+                                {job.hotel_name}
+                            </Link>
+                        ) : (
+                            <span className="text-lg text-muted-foreground mt-1 inline-block">{job.hotel_name}</span>
+                        )}
                     </div>
                 </div>
 
@@ -174,9 +178,9 @@ export default function JobDetail() {
                                             </a>
                                         ) : (
                                             <p className="text-xs text-muted-foreground">
-                                                {lang === 'el' ? 'Δεν έχετε ανεβάσει CV — ' : 'No CV uploaded — '}
+                                                {lang === 'el' ? 'Δεν έχεις ανεβάσει CV — ' : 'No CV uploaded — '}
                                                 <Link to="/profile" className="text-primary hover:underline" onClick={() => setApplyOpen(false)}>
-                                                    {lang === 'el' ? 'Ανεβάστε στο προφίλ σας' : 'Upload in your profile'}
+                                                    {lang === 'el' ? 'Ανέβασέ το στο προφίλ σου' : 'Upload in your profile'}
                                                 </Link>
                                             </p>
                                         )}

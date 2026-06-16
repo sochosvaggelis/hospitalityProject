@@ -57,7 +57,7 @@ function HotelFavorites() {
     };
 
     if (authLoading) return <div className="flex justify-center py-32"><div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" /></div>;
-    if (!me) return <GuestView icon={Star} titleEl="Αγαπημένοι Υποψήφιοι" titleEn="Favourite Applicants" descEl="Συνδεθείτε ως ξενοδοχείο για να αποθηκεύετε αγαπημένους υποψηφίους." descEn="Sign in as a hotel to save favourite applicants." />;
+    if (!me) return <GuestView icon={Star} titleEl="Αγαπημένοι Υποψήφιοι" titleEn="Favourite Applicants" descEl="Σύνδεσου ως επιχείρηση για να αποθηκεύεις αγαπημένους υποψηφίους." descEn="Sign in as a business to save favourite applicants." />;
     if (loading) return (
         <div className="flex justify-center py-32">
             <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
@@ -85,12 +85,12 @@ function HotelFavorites() {
                     <Star className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
                     <p className="text-muted-foreground">
                         {lang === 'el'
-                            ? 'Δεν έχετε αποθηκεύσει κανέναν υποψήφιο ακόμα.'
+                            ? 'Δεν έχεις αποθηκεύσει κανέναν υποψήφιο ακόμα.'
                             : 'No favourite applicants yet.'}
                     </p>
                     <p className="text-sm text-muted-foreground mt-1">
                         {lang === 'el'
-                            ? 'Πατήστε το ★ δίπλα σε έναν υποψήφιο στο Dashboard.'
+                            ? 'Πάτησε το ★ δίπλα σε έναν υποψήφιο στο Dashboard.'
                             : 'Click the ★ next to an applicant in your Dashboard.'}
                     </p>
                 </div>

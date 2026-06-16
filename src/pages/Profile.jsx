@@ -131,7 +131,7 @@ export default function Profile() {
         }
     };
 
-    if (!me) return <GuestView icon={User} titleEl="Το Προφίλ σας" titleEn="Your Profile" descEl="Συνδεθείτε για να δείτε και να επεξεργαστείτε το προφίλ σας." descEn="Sign in to view and edit your profile." />;
+    if (!me) return <GuestView icon={User} titleEl="Το Προφίλ σου" titleEn="Your Profile" descEl="Σύνδεσου για να δεις και να επεξεργαστείς το προφίλ σου." descEn="Sign in to view and edit your profile." />;
 
     const isHotel = me.role === 'hotel';
     const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -162,7 +162,7 @@ export default function Profile() {
                         )}
                     </div>
                     <div>
-                        <p className="text-sm text-muted-foreground">{lang === 'el' ? 'Πατήστε στη φωτογραφία για αλλαγή' : 'Click photo to change'}</p>
+                        <p className="text-sm text-muted-foreground">{lang === 'el' ? 'Πάτησε στη φωτογραφία για αλλαγή' : 'Click photo to change'}</p>
                         <span className="inline-block mt-1 text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium capitalize">{me.role}</span>
                         {me.avatar_url && (
                             <button onClick={handleRemoveAvatar} disabled={avatarBusy}
@@ -248,11 +248,11 @@ export default function Profile() {
                                     <a href={me.resume_url} target="_blank" rel="noopener noreferrer"
                                         className="flex items-center gap-2 text-sm text-primary hover:underline truncate max-w-[200px]">
                                         <FileText className="w-4 h-4 flex-shrink-0" />
-                                        <span className="truncate">{lang === 'el' ? 'Δείτε το CV σας' : 'View your CV'}</span>
+                                        <span className="truncate">{lang === 'el' ? 'Δες το CV σου' : 'View your CV'}</span>
                                         <ExternalLink className="w-3 h-3 flex-shrink-0" />
                                     </a>
                                 ) : (
-                                    <span className="text-sm text-muted-foreground">{lang === 'el' ? 'Δεν έχετε ανεβάσει CV' : 'No resume uploaded'}</span>
+                                    <span className="text-sm text-muted-foreground">{lang === 'el' ? 'Δεν έχεις ανεβάσει CV' : 'No resume uploaded'}</span>
                                 )}
                                 <label className={`${resumeBusy ? 'pointer-events-none opacity-50' : 'cursor-pointer'}`}>
                                     <span className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-border hover:bg-accent transition-colors">

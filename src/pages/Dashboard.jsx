@@ -118,7 +118,7 @@ export default function Dashboard() {
     }, [me]);
 
     if (authLoading) return <div className="flex justify-center py-32" style={{ background: '#eef4fd', minHeight: '100vh' }}><div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" /></div>;
-    if (!me) return <GuestView icon={LayoutDashboard} titleEl="Το Dashboard σας" titleEn="Your Dashboard" descEl="Συνδεθείτε για να δείτε τις αγγελίες και αιτήσεις σας." descEn="Sign in to view your jobs and applications." />;
+    if (!me) return <GuestView icon={LayoutDashboard} titleEl="Το Dashboard σου" titleEn="Your Dashboard" descEl="Σύνδεσου για να δεις τις αγγελίες και αιτήσεις σου." descEn="Sign in to view your jobs and applications." />;
     if (loading) return <div className="flex justify-center py-32" style={{ background: '#eef4fd', minHeight: '100vh' }}><div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" /></div>;
 
     const isHotel = me?.role === 'hotel';
@@ -356,7 +356,7 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between mb-8">
                     <div>
                         <h1 className="font-display text-3xl font-bold text-foreground">{t('dash_welcome')}, {me?.full_name}</h1>
-                        <p className="text-muted-foreground mt-1">{isHotel ? (lang === 'el' ? 'Διαχείριση θέσεων & αιτήσεων' : 'Manage your jobs & applications') : (lang === 'el' ? 'Παρακολουθήστε τις αιτήσεις σας' : 'Track your applications')}</p>
+                        <p className="text-muted-foreground mt-1">{isHotel ? (lang === 'el' ? 'Διαχείριση θέσεων & αιτήσεων' : 'Manage your jobs & applications') : (lang === 'el' ? 'Παρακολούθησε τις αιτήσεις σου' : 'Track your applications')}</p>
                     </div>
                     {isHotel && <Link to="/post-job"><Button className="rounded-xl gap-2"><Plus className="w-4 h-4" />{t('nav_post_job')}</Button></Link>}
                 </div>
@@ -855,8 +855,8 @@ export default function Dashboard() {
                 </DialogHeader>
                 <p className="text-sm text-muted-foreground mt-1">
                     {lang === 'el'
-                        ? 'Το ξενοδοχείο δεν θα βλέπει πια την αίτησή σου. Μπορείς να ξανακάνεις αίτηση αργότερα.'
-                        : 'The hotel will no longer see your application. You can apply again later.'}
+                        ? 'Η επιχείρηση δεν θα βλέπει πια την αίτησή σου. Μπορείς να ξανακάνεις αίτηση αργότερα.'
+                        : 'The business will no longer see your application. You can apply again later.'}
                 </p>
                 <DialogFooter className="gap-2 mt-4">
                     <Button variant="outline" className="rounded-xl" onClick={() => setWithdrawConfirm(null)}>{lang === 'el' ? 'Ακύρωση' : 'Cancel'}</Button>

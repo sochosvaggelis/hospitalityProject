@@ -6,27 +6,6 @@ import { authenticate } from '../middleware/auth.js';
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Public hotel profile by hotel_user_id (no auth required)
-router.get('/hotel/:userId', async (req, res) => {
-  const { userId } = req.params;
-  const [{ data: profile }, { data: jobs }] = await Promise.all([
-    supabase
-      .from('profiles')
-      .select('full_name, hotel_name, hotel_description, hotel_website, hotel_logo_url, hotel_stars, location, avatar_url')
-      .eq('id', userId)
-      .eq('role', 'hotel')
-      .single(),
-    supabase
-      .from('jobs')
-      .select('id, title, title_el, location, employment_type, salary_amount, salary_period, positions_available, start_date, category, created_at')
-      .eq('hotel_user_id', userId)
-      .eq('status', 'active')
-      .order('created_at', { ascending: false }),
-  ]);
-  if (!profile) return res.status(404).json({ error: 'Hotel not found' });
-  res.json({ ...profile, jobs: jobs || [] });
-});
-
 // Public profile by email (for hotels viewing applicants)
 router.get('/public', authenticate, async (req, res) => {
   const { email } = req.query;

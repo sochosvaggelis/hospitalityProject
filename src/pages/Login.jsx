@@ -19,7 +19,7 @@ export default function Login() {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(
         location.state?.resetSuccess
-            ? (lang === 'el' ? 'Ο κωδικός ενημερώθηκε! Συνδεθείτε με τον νέο σας κωδικό.' : 'Password updated! Please sign in with your new password.')
+            ? (lang === 'el' ? 'Ο κωδικός ενημερώθηκε! Σύνδεσου με τον νέο σου κωδικό.' : 'Password updated! Please sign in with your new password.')
             : ''
     );
 
@@ -32,17 +32,17 @@ export default function Login() {
         if (msg.includes('already registered') || msg.includes('already exists'))
             return lang === 'el' ? 'Υπάρχει ήδη λογαριασμός με αυτό το email.' : 'An account with this email already exists.';
         if (msg.includes('invalid login') || msg.includes('invalid credentials'))
-            return lang === 'el' ? 'Λάθος email ή κωδικός. Δοκιμάστε ξανά.' : 'Invalid email or password. Please try again.';
+            return lang === 'el' ? 'Λάθος email ή κωδικός. Δοκίμασε ξανά.' : 'Invalid email or password. Please try again.';
         if (msg.includes('email not confirmed'))
-            return lang === 'el' ? 'Επιβεβαιώστε πρώτα το email σας από το μήνυμα που σας στείλαμε.' : 'Please confirm your email first via the message we sent you.';
+            return lang === 'el' ? 'Επιβεβαίωσε πρώτα το email σου από το μήνυμα που σου στείλαμε.' : 'Please confirm your email first via the message we sent you.';
         if (msg.includes('rate limit') || msg.includes('too many'))
-            return lang === 'el' ? 'Πολλές προσπάθειες. Δοκιμάστε ξανά σε λίγο.' : 'Too many attempts. Please try again shortly.';
-        return err?.message || (lang === 'el' ? 'Κάτι πήγε στραβά. Δοκιμάστε ξανά.' : 'Something went wrong. Please try again.');
+            return lang === 'el' ? 'Πολλές προσπάθειες. Δοκίμασε ξανά σε λίγο.' : 'Too many attempts. Please try again shortly.';
+        return err?.message || (lang === 'el' ? 'Κάτι πήγε στραβά. Δοκίμασε ξανά.' : 'Something went wrong. Please try again.');
     };
 
     const handleLogin = async () => {
         if (!form.email || !form.password) {
-            setError(lang === 'el' ? 'Συμπληρώστε email και κωδικό.' : 'Please enter your email and password.');
+            setError(lang === 'el' ? 'Συμπλήρωσε email και κωδικό.' : 'Please enter your email and password.');
             return;
         }
         setLoading(true);
@@ -58,11 +58,11 @@ export default function Login() {
 
     const handleRegister = async () => {
         if (!form.fullName.trim()) {
-            setError(lang === 'el' ? 'Εισάγετε το ονοματεπώνυμό σας.' : 'Please enter your full name.');
+            setError(lang === 'el' ? 'Συμπλήρωσε το ονοματεπώνυμό σου.' : 'Please enter your full name.');
             return;
         }
         if (!form.email.trim()) {
-            setError(lang === 'el' ? 'Εισάγετε το email σας.' : 'Please enter your email address.');
+            setError(lang === 'el' ? 'Συμπλήρωσε το email σου.' : 'Please enter your email address.');
             return;
         }
         if (form.password.length < 6) {
@@ -84,7 +84,7 @@ export default function Login() {
         // If no session is returned, the project requires email confirmation.
         if (!data.session) {
             setSuccess(lang === 'el'
-                ? 'Σχεδόν έτοιμα! Σας στείλαμε email επιβεβαίωσης — ελέγξτε τα εισερχόμενά σας για να ενεργοποιήσετε τον λογαριασμό.'
+                ? 'Σχεδόν έτοιμα! Σου στείλαμε email επιβεβαίωσης — έλεγξε τα εισερχόμενά σου για να ενεργοποιήσεις τον λογαριασμό.'
                 : 'Almost there! We sent you a confirmation email — check your inbox to activate your account.');
         } else {
             navigate(from, { replace: true });
@@ -93,7 +93,7 @@ export default function Login() {
 
     const handleForgot = async () => {
         if (!form.email.trim()) {
-            setError(lang === 'el' ? 'Εισάγετε το email σας.' : 'Please enter your email address.');
+            setError(lang === 'el' ? 'Συμπλήρωσε το email σου.' : 'Please enter your email address.');
             return;
         }
         setLoading(true);
@@ -104,7 +104,7 @@ export default function Login() {
         setLoading(false);
         if (error) setError(friendlyError(error));
         else setSuccess(lang === 'el'
-            ? 'Αν υπάρχει λογαριασμός με αυτό το email, θα λάβετε σύνδεσμο επαναφοράς κωδικού.'
+            ? 'Αν υπάρχει λογαριασμός με αυτό το email, θα λάβεις σύνδεσμο επαναφοράς κωδικού.'
             : "If an account exists for this email, you'll receive a password reset link.");
     };
 
@@ -150,7 +150,7 @@ export default function Login() {
                     {mode === 'forgot' && (
                         <div className="mb-5">
                             <h2 className="font-display text-lg font-bold text-foreground">{lang === 'el' ? 'Επαναφορά κωδικού' : 'Reset password'}</h2>
-                            <p className="text-sm text-muted-foreground mt-1">{lang === 'el' ? 'Θα σας στείλουμε έναν σύνδεσμο για να ορίσετε νέο κωδικό.' : "We'll email you a link to set a new password."}</p>
+                            <p className="text-sm text-muted-foreground mt-1">{lang === 'el' ? 'Θα σου στείλουμε έναν σύνδεσμο για να ορίσεις νέο κωδικό.' : "We'll email you a link to set a new password."}</p>
                         </div>
                     )}
 
@@ -204,7 +204,7 @@ export default function Login() {
                                     {mode === 'login' && (
                                         <button type="button" onClick={() => switchMode('forgot')}
                                             className="text-xs text-primary hover:underline">
-                                            {lang === 'el' ? 'Ξεχάσατε τον κωδικό;' : 'Forgot password?'}
+                                            {lang === 'el' ? 'Ξέχασες τον κωδικό;' : 'Forgot password?'}
                                         </button>
                                     )}
                                 </div>

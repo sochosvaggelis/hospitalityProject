@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useUserFavoriteIds } from '@/lib/queries';
 import useLanguage from '@/lib/useLanguage';
 
-// Heart toggle for job seekers to save a hotel or a job listing.
+// Heart toggle for job seekers to save a venue or a job listing.
 // Only rendered for the 'user' role; guests are routed to login.
 export default function FavoriteButton({ kind, id, variant = 'overlay', className = '' }) {
     const { lang } = useLanguage();

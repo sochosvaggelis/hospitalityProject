@@ -14,7 +14,7 @@ router.get('/ids', authenticate, async (req, res) => {
   res.json(data);
 });
 
-// Full list, enriched with hotel/job details for the Favourites page.
+// Full list, enriched with venue/job details for the Favourites page.
 router.get('/', authenticate, async (req, res) => {
   const { data: favs, error } = await supabase
     .from('user_favorites')
@@ -23,14 +23,14 @@ router.get('/', authenticate, async (req, res) => {
     .order('created_at', { ascending: false });
   if (error) return res.status(500).json({ error: error.message });
 
-  const hotelIds = favs.filter(f => f.kind === 'hotel').map(f => f.ref_id);
+  const venueIds = favs.filter(f => f.kind === 'venue').map(f => f.ref_id);
   const jobIds = favs.filter(f => f.kind === 'job').map(f => f.ref_id);
 
-  const [{ data: hotels }, { data: jobs }] = await Promise.all([
-    hotelIds.length
-      ? supabase.from('profiles')
-          .select('id, hotel_name, full_name, hotel_logo_url, avatar_url, location, hotel_stars, hotel_description')
-          .in('id', hotelIds)
+  const [{ data: venues }, { data: jobs }] = await Promise.all([
+    venueIds.length
+      ? supabase.from('venues')
+          .select('id, name, type, logo_url, location, stars, description')
+          .in('id', venueIds)
       : Promise.resolve({ data: [] }),
     jobIds.length
       ? supabase.from('jobs').select('*').in('id', jobIds)
@@ -40,7 +40,7 @@ router.get('/', authenticate, async (req, res) => {
   // Preserve favourite order (most recent first)
   const order = (arr, ids) => ids.map(id => arr.find(x => x.id === id)).filter(Boolean);
   res.json({
-    hotels: order(hotels || [], hotelIds),
+    venues: order(venues || [], venueIds),
     jobs: order(jobs || [], jobIds),
   });
 });
@@ -48,8 +48,8 @@ router.get('/', authenticate, async (req, res) => {
 // Toggle: add if missing, remove if present.
 router.post('/toggle', authenticate, async (req, res) => {
   const { kind, ref_id } = req.body;
-  if (!['hotel', 'job'].includes(kind) || !ref_id) {
-    return res.status(400).json({ error: 'kind (hotel|job) and ref_id required' });
+  if (!['venue', 'job'].includes(kind) || !ref_id) {
+    return res.status(400).json({ error: 'kind (venue|job) and ref_id required' });
   }
 
   const { data: existing } = await supabase

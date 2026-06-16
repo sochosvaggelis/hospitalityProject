@@ -88,7 +88,6 @@ export const api = {
     // Profile
     getProfile: () => get('/api/profile'),
     getPublicProfile: (email) => get(`/api/profile/public?email=${encodeURIComponent(email)}`),
-    getHotelProfile: (userId) => get(`/api/profile/hotel/${userId}`),
     updateProfile: (body) => patch('/api/profile', body),
     setRole: (role) => patch('/api/profile/role', { role }),
     uploadAvatar: async (file) => {
@@ -118,7 +117,7 @@ export const api = {
     getFavorites: () => get('/api/favorites'),
     toggleFavorite: (applicant_email, applicant_name) => post('/api/favorites/toggle', { applicant_email, applicant_name }),
 
-    // User favourites (job seekers save hotels & jobs)
+    // User favourites (job seekers save venues & jobs)
     getUserFavorites: () => get('/api/user-favorites'),
     getUserFavoriteIds: () => get('/api/user-favorites/ids'),
     toggleUserFavorite: (kind, ref_id) => post('/api/user-favorites/toggle', { kind, ref_id }),

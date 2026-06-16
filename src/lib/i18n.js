@@ -36,11 +36,11 @@ const translations = {
         nav_admin: "Admin",
 
         // Home
-        hero_title: "Find Your Perfect Role in Greek Hospitality",
-        hero_subtitle: "Connect with top hotels and resorts across Greece. Discover seasonal and permanent positions in the hospitality industry.",
-        hero_search_placeholder: "Search jobs, hotels, locations...",
+        hero_title: "Find Your Next Role in Greek Hospitality",
+        hero_subtitle: "Connect with top hotels, restaurants, bars and beach clubs across the Greek islands. Find seasonal and year-round positions in hospitality.",
+        hero_search_placeholder: "Search jobs, businesses, locations...",
         hero_browse: "Browse Jobs",
-        hero_for_hotels: "For Hotels",
+        hero_for_hotels: "For Businesses",
 
         // Categories
         categories_title: "Browse by Role",
@@ -109,8 +109,8 @@ const translations = {
         profile_languages: "Languages Spoken",
         profile_phone: "Phone",
         profile_location: "Location",
-        profile_hotel_name: "Hotel Name",
-        profile_hotel_desc: "Hotel Description",
+        profile_hotel_name: "Business Name",
+        profile_hotel_desc: "Business Description",
         profile_hotel_website: "Website",
 
         // Chat
@@ -135,7 +135,7 @@ const translations = {
 
         // Footer
         footer_about: "About SeaSide Jobs",
-        footer_about_text: "Connecting hospitality professionals with top hotels and resorts across Greece.",
+        footer_about_text: "Connecting hospitality professionals with top businesses across the Greek islands.",
         footer_links: "Quick Links",
         footer_contact: "Contact",
         footer_rights: "All rights reserved.",
@@ -180,17 +180,17 @@ const translations = {
         nav_admin: "Διαχείριση",
 
         // Home
-        hero_title: "Βρείτε τον Ιδανικό Ρόλο στην Ελληνική Φιλοξενία",
-        hero_subtitle: "Συνδεθείτε με κορυφαία ξενοδοχεία και θέρετρα σε όλη την Ελλάδα. Ανακαλύψτε εποχιακές και μόνιμες θέσεις στον κλάδο της φιλοξενίας.",
-        hero_search_placeholder: "Αναζήτηση θέσεων, ξενοδοχείων, τοποθεσιών...",
+        hero_title: "Βρες την Επόμενη Θέση σου στην Ελληνική Φιλοξενία",
+        hero_subtitle: "Σύνδεσου με κορυφαία ξενοδοχεία, εστιατόρια, μπαρ και beach bar σε όλα τα ελληνικά νησιά. Βρες εποχιακές και ολοετείς θέσεις στη φιλοξενία.",
+        hero_search_placeholder: "Αναζήτηση θέσεων, επιχειρήσεων, τοποθεσιών...",
         hero_browse: "Αναζήτηση Θέσεων",
-        hero_for_hotels: "Για Ξενοδοχεία",
+        hero_for_hotels: "Για Επιχειρήσεις",
 
         // Categories
         categories_title: "Αναζήτηση ανά Ρόλο",
         cat_fine_dining: "Fine Dining",
-        cat_wine_expert: "Οινολόγος / Sommelier",
-        cat_pool_beach: "Pool & Beach Server",
+        cat_wine_expert: "Οινοχόος / Sommelier",
+        cat_pool_beach: "Σερβιτόρος Πισίνας & Παραλίας",
         cat_breakfast: "Σερβιτόρος Πρωινού",
         cat_banquet: "Σερβιτόρος Δεξιώσεων",
         cat_room_service: "Room Service",
@@ -206,7 +206,7 @@ const translations = {
         jobs_view: "Λεπτομέρειες",
         jobs_posted: "Δημοσιεύτηκε",
         jobs_positions: "θέσεις",
-        jobs_login_to_apply: "Συνδεθείτε για να κάνετε αίτηση",
+        jobs_login_to_apply: "Σύνδεσου για να κάνεις αίτηση",
 
         // Employment types
         emp_full_time: "Πλήρης Απασχόληση",
@@ -219,11 +219,11 @@ const translations = {
         apply_cover_letter: "Συνοδευτική Επιστολή",
         apply_resume: "Ανέβασμα Βιογραφικού",
         apply_submit: "Υποβολή Αίτησης",
-        apply_success: "Η αίτηση υποβλήθηκε επιτυχώς!",
-        apply_already: "Έχετε ήδη υποβάλει αίτηση για αυτή τη θέση",
+        apply_success: "Η αίτησή σου υποβλήθηκε επιτυχώς!",
+        apply_already: "Έχεις ήδη κάνει αίτηση για αυτή τη θέση",
 
         // Dashboard
-        dash_welcome: "Καλώς ήρθατε",
+        dash_welcome: "Καλώς ήρθες",
         dash_my_applications: "Οι Αιτήσεις μου",
         dash_my_jobs: "Οι Αγγελίες μου",
         dash_total_apps: "Συνολικές Αιτήσεις",
@@ -253,8 +253,8 @@ const translations = {
         profile_languages: "Γλώσσες",
         profile_phone: "Τηλέφωνο",
         profile_location: "Τοποθεσία",
-        profile_hotel_name: "Όνομα Ξενοδοχείου",
-        profile_hotel_desc: "Περιγραφή Ξενοδοχείου",
+        profile_hotel_name: "Όνομα Επιχείρησης",
+        profile_hotel_desc: "Περιγραφή Επιχείρησης",
         profile_hotel_website: "Ιστοσελίδα",
 
         // Chat
@@ -262,7 +262,7 @@ const translations = {
         chat_placeholder: "Γράψτε ένα μήνυμα...",
         chat_send: "Αποστολή",
         chat_no_conversations: "Δεν υπάρχουν συνομιλίες ακόμα",
-        chat_start: "Ξεκινήστε μια συνομιλία",
+        chat_start: "Ξεκίνα μια συνομιλία",
 
         // Common
         common_search: "Αναζήτηση",
@@ -279,7 +279,7 @@ const translations = {
 
         // Footer
         footer_about: "Σχετικά με το SeaSide Jobs",
-        footer_about_text: "Συνδέουμε επαγγελματίες φιλοξενίας με κορυφαία ξενοδοχεία και θέρετρα σε όλη την Ελλάδα.",
+        footer_about_text: "Συνδέουμε επαγγελματίες φιλοξενίας με κορυφαίες επιχειρήσεις σε όλα τα ελληνικά νησιά.",
         footer_links: "Γρήγοροι Σύνδεσμοι",
         footer_contact: "Επικοινωνία",
         footer_rights: "Με επιφύλαξη παντός δικαιώματος.",
